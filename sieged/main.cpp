@@ -10,7 +10,7 @@ int main(int argc, char* argv[])
 	blib::util::FileSystem::registerHandler(new blib::util::PhysicalFileSystemHandler("../"));
 	blib::util::FileSystem::registerHandler(new blib::util::PhysicalFileSystemHandler("../blib/"));
 	blib::util::Thread::setMainThread();
-	blib::App* app = new ZombieDraw();
+	blib::App* app = new Sieged();
 	app->start();
 	delete app;
 

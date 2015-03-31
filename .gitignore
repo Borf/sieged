@@ -1,1 +1,3 @@
 vs2013/Debug/
+*.opensdf
+*.sdf
