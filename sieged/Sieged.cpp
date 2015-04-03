@@ -18,9 +18,13 @@
 #include <blib/Window.h>
 #include <blib/AnimatableSprite.h>
 #include <clipper/clipper.hpp>
+#include <blib/util/Profiler.h>
 
 #include <blib/util/Log.h>
 using blib::util::Log;
+
+
+std::vector<blib::VertexP3N3C4> cube;
 
 Sieged::Sieged()
 {
@@ -41,18 +45,22 @@ void Sieged::init()
 	tileTexture = resourceManager->getResource<blib::Texture>("assets/textures/tiles.png");
 	enemyTexture = resourceManager->getResource<blib::Texture>("assets/textures/enemy.png");
 	arrowsTexture = resourceManager->getResource<blib::Texture>("assets/textures/arrows.png");
+	conveyorTexture = resourceManager->getResource<blib::Texture>("assets/textures/conveyor.png");
+	conveyorTexture->setTextureRepeat(true);
+	font = resourceManager->getResource<blib::Font>("tahoma");
 
+	conveyorBuildingTextureMap = resourceManager->getResource<blib::TextureMap>();
 
-	buildingTemplates[BuildingTemplate::TownHall] = new BuildingTemplate(BuildingTemplate::TownHall, glm::ivec2(2,2));
-	buildingTemplates[BuildingTemplate::StoneMason] = new BuildingTemplate(BuildingTemplate::StoneMason, glm::ivec2(2,3));
-	buildingTemplates[BuildingTemplate::Farm] = new BuildingTemplate(BuildingTemplate::Farm, glm::ivec2());
-	buildingTemplates[BuildingTemplate::MarketPlace] = new BuildingTemplate(BuildingTemplate::MarketPlace, glm::ivec2(4,5));
-	buildingTemplates[BuildingTemplate::ArcheryRange] = new BuildingTemplate(BuildingTemplate::ArcheryRange, glm::ivec2(3,6));
-	buildingTemplates[BuildingTemplate::WizardTower] = new BuildingTemplate(BuildingTemplate::WizardTower, glm::ivec2());
-	buildingTemplates[BuildingTemplate::Smithy] = new BuildingTemplate(BuildingTemplate::Smithy, glm::ivec2());
-	buildingTemplates[BuildingTemplate::Tavern] = new BuildingTemplate(BuildingTemplate::Tavern, glm::ivec2());
-	buildingTemplates[BuildingTemplate::WatchTower] = new BuildingTemplate(BuildingTemplate::WatchTower, glm::ivec2());
-	buildingTemplates[BuildingTemplate::AlchemyLabs] = new BuildingTemplate(BuildingTemplate::AlchemyLabs, glm::ivec2());
+	buildingTemplates[BuildingTemplate::TownHall] = new BuildingTemplate(BuildingTemplate::TownHall, glm::ivec2(2, 2), conveyorBuildingTextureMap->addTexture("assets/textures/buildings/TownHall.png"));
+	buildingTemplates[BuildingTemplate::StoneMason] = new BuildingTemplate(BuildingTemplate::StoneMason, glm::ivec2(2, 3), conveyorBuildingTextureMap->addTexture("assets/textures/buildings/StoneMason.png"));
+	buildingTemplates[BuildingTemplate::Farm] = new BuildingTemplate(BuildingTemplate::Farm, glm::ivec2(), conveyorBuildingTextureMap->addTexture("assets/textures/buildings/Farm.png"));
+	buildingTemplates[BuildingTemplate::MarketPlace] = new BuildingTemplate(BuildingTemplate::MarketPlace, glm::ivec2(4, 5), conveyorBuildingTextureMap->addTexture("assets/textures/buildings/MarketPlace.png"));
+	buildingTemplates[BuildingTemplate::ArcheryRange] = new BuildingTemplate(BuildingTemplate::ArcheryRange, glm::ivec2(3, 6), conveyorBuildingTextureMap->addTexture("assets/textures/buildings/ArcheryRange.png"));
+	buildingTemplates[BuildingTemplate::WizardTower] = new BuildingTemplate(BuildingTemplate::WizardTower, glm::ivec2(), conveyorBuildingTextureMap->addTexture("assets/textures/buildings/WizardTower.png"));
+	buildingTemplates[BuildingTemplate::Smithy] = new BuildingTemplate(BuildingTemplate::Smithy, glm::ivec2(), conveyorBuildingTextureMap->addTexture("assets/textures/buildings/Smithy.png"));
+	buildingTemplates[BuildingTemplate::Tavern] = new BuildingTemplate(BuildingTemplate::Tavern, glm::ivec2(), conveyorBuildingTextureMap->addTexture("assets/textures/buildings/Tavern.png"));
+	buildingTemplates[BuildingTemplate::WatchTower] = new BuildingTemplate(BuildingTemplate::WatchTower, glm::ivec2(), conveyorBuildingTextureMap->addTexture("assets/textures/buildings/WatchTower.png"));
+	buildingTemplates[BuildingTemplate::AlchemyLabs] = new BuildingTemplate(BuildingTemplate::AlchemyLabs, glm::ivec2(), conveyorBuildingTextureMap->addTexture("assets/textures/buildings/AlchemyLabs.png"));
 
 	tiles.resize(100, std::vector<Tile*>(100, nullptr));
 	for (int x = 0; x < 100; x++)
@@ -79,11 +87,61 @@ void Sieged::init()
 
 	while (enemies.size() < 100)
 	{
-		glm::vec2 pos(blib::math::randomFloat(0, 1920), blib::math::randomFloat(0, 1080));
-		if (tiles[(int)(pos.x / 64)][(int)(pos.y / 64)]->building)
+		glm::vec2 pos(blib::math::randomFloat(0, 32), blib::math::randomFloat(0, 20));
+		if (tiles[(int)(pos.x)][(int)(pos.y)]->building)
 			continue;
 		enemies.push_back(new Enemy(pos));
 	}
+
+	glm::vec4 color(1, 1, 1, 1);
+
+	for (float i = -0.5f; i <= 0.5f; i += 1)
+	{
+		cube.push_back(blib::VertexP3N3C4(glm::vec3(i, -0.5f, -0.5f), glm::vec3(i, 0, 0), color));
+		cube.push_back(blib::VertexP3N3C4(glm::vec3(i, 0.5f, -0.5f), glm::vec3(i, 0, 0), color));
+		cube.push_back(blib::VertexP3N3C4(glm::vec3(i, -0.5f, 0.5f), glm::vec3(i, 0, 0), color));
+
+		cube.push_back(blib::VertexP3N3C4(glm::vec3(i, 0.5f, 0.5f), glm::vec3(i, 0, 0), color));
+		cube.push_back(blib::VertexP3N3C4(glm::vec3(i, 0.5f, -0.5f), glm::vec3(i, 0, 0), color));
+		cube.push_back(blib::VertexP3N3C4(glm::vec3(i, -0.5f, 0.5f), glm::vec3(i, 0, 0), color));
+
+		cube.push_back(blib::VertexP3N3C4(glm::vec3(-0.5f, i, -0.5f), glm::vec3(0, i, 0), color));
+		cube.push_back(blib::VertexP3N3C4(glm::vec3(0.5f, i, -0.5f), glm::vec3(0, i, 0), color));
+		cube.push_back(blib::VertexP3N3C4(glm::vec3(-0.5f, i, 0.5f), glm::vec3(0, i, 0), color));
+
+		cube.push_back(blib::VertexP3N3C4(glm::vec3(0.5f, i, 0.5f), glm::vec3(0, i, 0), color));
+		cube.push_back(blib::VertexP3N3C4(glm::vec3(0.5f, i, -0.5f), glm::vec3(0, i, 0), color));
+		cube.push_back(blib::VertexP3N3C4(glm::vec3(-0.5f, i, 0.5f), glm::vec3(0, i, 0), color));
+
+		cube.push_back(blib::VertexP3N3C4(glm::vec3(-0.5f, -0.5f, i), glm::vec3(0, 0, i), color));
+		cube.push_back(blib::VertexP3N3C4(glm::vec3(0.5f, -0.5f, i), glm::vec3(0, 0, i), color));
+		cube.push_back(blib::VertexP3N3C4(glm::vec3(-0.5f, 0.5f, i), glm::vec3(0, 0, i), color));
+
+		cube.push_back(blib::VertexP3N3C4(glm::vec3(0.5f, 0.5f, i), glm::vec3(0, 0, i), color));
+		cube.push_back(blib::VertexP3N3C4(glm::vec3(0.5f, -0.5f, i), glm::vec3(0, 0, i), color));
+		cube.push_back(blib::VertexP3N3C4(glm::vec3(-0.5f, 0.5f, i), glm::vec3(0, 0, i), color));
+	}
+
+
+
+	backgroundShader = resourceManager->getResource<blib::Shader>("simple");
+	backgroundShader->bindAttributeLocation("a_position", 0);
+	backgroundShader->bindAttributeLocation("a_normal", 1);
+	backgroundShader->bindAttributeLocation("a_color", 2);
+	backgroundShader->setUniformName(Uniforms::projectionMatrix, "projectionMatrix", blib::Shader::UniformType::Mat4);
+	backgroundShader->setUniformName(Uniforms::cameraMatrix, "cameraMatrix", blib::Shader::UniformType::Mat4);
+	backgroundShader->setUniformName(Uniforms::modelMatrix, "modelMatrix", blib::Shader::UniformType::Mat4);
+	backgroundShader->setUniformName(Uniforms::colorMult, "colorMult", blib::Shader::UniformType::Vec4);
+	
+	backgroundShader->finishUniformSetup();
+
+	conveyorOffset = 0;
+	conveyerBuildings.push_back(std::pair<BuildingTemplate*, float>(buildingTemplates[BuildingTemplate::TownHall], 1920.0f));
+
+	cameraCenter = glm::vec3(16, 0, 15);
+	cameraAngle = 70;
+	cameraDistance = 30;
+	cameraRotation = 0;
 }
 
 void Sieged::update(double elapsedTime)
@@ -94,6 +152,14 @@ void Sieged::update(double elapsedTime)
 		return;
 	}
 
+	cameraDistance -= (mouseState.scrollPosition - prevMouseState.scrollPosition) / 100.0f;
+	cameraDistance = glm::clamp(cameraDistance, 5.0f, 100.0f);
+	if (mouseState.rightButton)
+	{
+		cameraRotation += (mouseState.position.x - prevMouseState.position.x) / 3.0f;
+		cameraAngle += (mouseState.position.y - prevMouseState.position.y) / 3.0f;
+		cameraAngle = glm::clamp(cameraAngle, 10.0f, 90.0f);
+	}
 
 	/*if (keyState.isPressed(blib::Key::LEFT))
 		cameraPos.x -= (float)(500 * elapsedTime);
@@ -110,53 +176,52 @@ void Sieged::update(double elapsedTime)
 
 	for (Enemy* e : enemies)
 	{
-		glm::ivec2 tile = glm::ivec2(e->position / 64.0f);
-
+		glm::ivec2 tile = glm::ivec2(e->position);
+		if (tile.x < 0 || tile.y < 0)
+			continue;
 		int direction = tiles[tile.x][tile.y]->toBase;
 
-		glm::vec2 oldPos;
-		glm::vec2 oldOldPos = e->position;
+		glm::vec2 oldPos = e->position;
 
-
-		oldPos = e->position;
 		if ((direction & Tile::Left) != 0)
-			e->position.x -= elapsedTime * 128;
-		if (tiles[(int)(e->position.x / 64)][(int)(e->position.y / 64)]->building)
-			e->position = oldPos;
-		oldPos = e->position;
+			e->position.x -= elapsedTime * 1;
 		if ((direction & Tile::Right) != 0)
-			e->position.x += elapsedTime * 128;
-		if (tiles[(int)(e->position.x / 64)][(int)(e->position.y / 64)]->building)
-			e->position = oldPos;
-		oldPos = e->position;
+			e->position.x += elapsedTime * 1;
 		if ((direction & Tile::Down) != 0)
-			e->position.y += elapsedTime * 128;
-		if (tiles[(int)(e->position.x / 64)][(int)(e->position.y / 64)]->building)
-			e->position = oldPos;
-		oldPos = e->position;
+			e->position.y += elapsedTime * 1;
 		if ((direction & Tile::Up) != 0)
-			e->position.y -= elapsedTime * 128;
-		if (tiles[(int)(e->position.x / 64)][(int)(e->position.y / 64)]->building)
-			e->position = oldPos;
-		oldPos = e->position;
+			e->position.y -= elapsedTime * 1;
+
+	//	if (tiles[(int)(e->position.x / 64)][(int)(e->position.y / 64)]->building)
+	//		e->position = oldPos;
+
 
 		for (auto ee : enemies)
 		{
-			if (e != ee && glm::distance(ee->position, e->position) < 10)
-				e->position = oldOldPos;
+			if (e == ee)
+				continue;
+			glm::vec2 diff = ee->position - e->position;
+			float len = glm::length(diff);
+			if (len < 0.1f && len > 0.001f)
+			{
+				diff /= len;
+				e->position += (0.1f - len) * -0.5f * diff;
+				ee->position += (0.1f - len) * 0.5f * diff;
+			}
 		}
-
+		
 	}
+	
 
 
-	while (enemies.size() < 100 + time*5)
+	conveyorOffset += elapsedTime * conveyerSpeed;
+	while (conveyorOffset > 128)
+		conveyorOffset -= 128;
+
+	for (size_t i = 0; i < conveyerBuildings.size(); i++)
 	{
-		glm::vec2 pos(blib::math::randomFloat(0, 1920), blib::math::randomFloat(0, 1080));
-		if (tiles[(int)(pos.x / 64)][(int)(pos.y / 64)]->building)
-			continue;
-		enemies.push_back(new Enemy(pos));
+		conveyerBuildings[i].second = glm::max(conveyerBuildings[i].second - (float)elapsedTime * conveyerSpeed, 128.0f * i);
 	}
-
 
 	prevMouseState = mouseState;
 }
@@ -165,12 +230,12 @@ void Sieged::update(double elapsedTime)
 
 void Sieged::draw()
 {
-	renderer->clear(glm::vec4(0, 1, 0, 1), blib::Renderer::Color);
+	renderer->clear(glm::vec4(0, 1, 0, 1), blib::Renderer::Color | blib::Renderer::Depth);
 
 
-	spriteBatch->begin();
+//	spriteBatch->begin();
 	
-	for (int x = 0; x < 32; x++)
+/*	for (int x = 0; x < 32; x++)
 	{
 		for (int y = 0; y < 18; y++)
 		{
@@ -219,7 +284,81 @@ void Sieged::draw()
 
 
 	spriteBatch->end();
+	*/
 
+
+	glm::mat4 cameraMatrix;
+	cameraMatrix = glm::rotate(cameraMatrix, -10.0f, glm::vec3(1, 0, 0));
+	cameraMatrix = glm::translate(cameraMatrix, glm::vec3(0, 0, -cameraDistance));
+	cameraMatrix = glm::rotate(cameraMatrix, cameraAngle, glm::vec3(1, 0, 0));
+
+	cameraMatrix = glm::rotate(cameraMatrix, cameraRotation, glm::vec3(0, 1, 0));
+	cameraMatrix = glm::translate(cameraMatrix, -cameraCenter);
+
+
+
+	std::vector<blib::VertexP3N3C4> verts;
+	verts.push_back(blib::VertexP3N3C4(glm::vec3(0, 0, 0), glm::vec3(0, 1, 0), glm::vec4(1, 1, 1, 1)));
+	verts.push_back(blib::VertexP3N3C4(glm::vec3(100, 0, 0), glm::vec3(0, 1, 0), glm::vec4(1, 1, 1, 1)));
+	verts.push_back(blib::VertexP3N3C4(glm::vec3(0, 0, 100), glm::vec3(0, 1, 0), glm::vec4(1, 1, 1, 1)));
+
+	verts.push_back(blib::VertexP3N3C4(glm::vec3(100, 0, 100), glm::vec3(0, 1, 0), glm::vec4(1, 1, 1, 1)));
+	verts.push_back(blib::VertexP3N3C4(glm::vec3(100, 0, 0), glm::vec3(0, 1, 0), glm::vec4(1, 1, 1, 1)));
+	verts.push_back(blib::VertexP3N3C4(glm::vec3(0, 0, 100), glm::vec3(0, 1, 0), glm::vec4(1, 1, 1, 1)));
+
+	renderState.depthTest = true;
+	renderState.activeShader = backgroundShader;
+	renderState.activeShader->setUniform(Uniforms::cameraMatrix, cameraMatrix);
+	renderState.activeShader->setUniform(Uniforms::projectionMatrix, glm::perspective(45.0f, 1920.0f / 1080.0f, 0.1f, 500.0f));
+	renderState.activeShader->setUniform(Uniforms::modelMatrix, glm::mat4());
+	renderState.activeShader->setUniform(Uniforms::colorMult, glm::vec4(1,1,1,1));
+	renderer->drawTriangles(verts, renderState);
+
+
+
+
+	for (int x = 0; x < 100; x++)
+	{
+		for (int y = 0; y < 100; y++)
+		{
+			if (tiles[x][y]->building)
+			{
+				glm::mat4 mat;
+				//mat = glm::scale(mat, glm::vec3(2, 1, 2));
+				mat = glm::translate(mat, glm::vec3(x + 0.5f, 0.5f, y + 0.5f));
+				renderState.activeShader->setUniform(Uniforms::modelMatrix, mat);
+				renderState.activeShader->setUniform(Uniforms::colorMult, glm::vec4(1, 1, 0, 1));
+				renderer->drawTriangles(cube, renderState);
+			}
+		}
+	}
+
+
+	for (auto e : enemies)
+	{
+		glm::mat4 mat;
+		mat = glm::translate(mat, glm::vec3(e->position.x, 0.5f, e->position.y));
+		mat = glm::scale(mat, glm::vec3(0.1f, 2, 0.1f));
+		renderState.activeShader->setUniform(Uniforms::modelMatrix, mat);
+		renderState.activeShader->setUniform(Uniforms::colorMult, glm::vec4(1, 0, 0, 1));
+		renderer->drawTriangles(cube, renderState);
+	}
+
+
+
+
+	spriteBatch->begin();
+
+	for (int i = -128; i < 1920+128; i+=128)
+		spriteBatch->draw(conveyorTexture, blib::math::easyMatrix(glm::vec2(-conveyorOffset + i, 1080 - 128)));
+
+	for (auto b : conveyerBuildings)
+		spriteBatch->draw(b.first->texInfo, blib::math::easyMatrix(glm::vec2(b.second, 1080 - 128+32)));
+
+
+	spriteBatch->draw(font, "Enemies: " + std::to_string(enemies.size()), blib::math::easyMatrix(glm::vec2(1, 129)), blib::Color::black);
+	spriteBatch->draw(font, "Enemies: " + std::to_string(enemies.size()), blib::math::easyMatrix(glm::vec2(0, 128)));
+	spriteBatch->end();
 
 }
 

@@ -91,6 +91,10 @@
   <ItemGroup>
     <ClInclude Include="..\sieged\Sieged.h" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="..\assets\shaders\gl\simple.frag" />
+    <None Include="..\assets\shaders\gl\simple.vert" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
