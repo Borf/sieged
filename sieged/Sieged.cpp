@@ -192,8 +192,8 @@ void Sieged::update(double elapsedTime)
 		if ((direction & Tile::Up) != 0)
 			e->position.y -= elapsedTime * 1;
 
-	//	if (tiles[(int)(e->position.x / 64)][(int)(e->position.y / 64)]->building)
-	//		e->position = oldPos;
+		if (tiles[(int)(e->position.x / 64)][(int)(e->position.y / 64)]->building)
+			e->position = oldPos;
 
 
 		for (auto ee : enemies)
@@ -364,6 +364,7 @@ void Sieged::draw()
 
 void Sieged::calcPaths()
 {
+	double beginTime = blib::util::Profiler::getAppTime();
 	std::vector<std::vector<float>> costs(100, std::vector<float>(100,9999999));
 	
 	std::list<glm::ivec2> queue;
@@ -437,6 +438,7 @@ void Sieged::calcPaths()
 	}
 
 
+	Log::out << "Path calculations: " << (blib::util::Profiler::getAppTime() - beginTime) << " s " << Log::newline;
 
 }
 
