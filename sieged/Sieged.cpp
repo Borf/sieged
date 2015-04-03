@@ -436,9 +436,29 @@ void Sieged::calcPaths()
 				tiles[x][y]->toBase |= Tile::Down;
 		}
 	}
-
-
 	Log::out << "Path calculations: " << (blib::util::Profiler::getAppTime() - beginTime) << " s " << Log::newline;
+
+
+	ClipperLib::Clipper clipper;
+
+	for (int x = 0; x < 100; x++)
+	{
+		for (int y = 0; y < 100; y++)
+		{
+			if (!tiles[x][y]->building)
+				continue;
+			ClipperLib::Polygon p;
+			p.push_back(glm::vec2(x, y));
+			p.push_back(glm::vec2(x+1, y));
+			p.push_back(glm::vec2(x+1, y+1));
+			p.push_back(glm::vec2(x, y+1));
+			clipper.AddPolygon(p, ClipperLib::ptClip);
+		}
+	}
+	ClipperLib::Polygons result;
+	clipper.Execute(ClipperLib::ctUnion, result);
+
+
 
 }
 
