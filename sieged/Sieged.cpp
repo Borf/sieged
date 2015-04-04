@@ -112,6 +112,7 @@ void Sieged::init()
 
 
 	calcPaths();
+	calcWalls();
 
 	while (enemies.size() < 10)
 	{
@@ -365,7 +366,7 @@ void Sieged::update(double elapsedTime)
 
 void Sieged::draw()
 {
-	renderer->clear(glm::vec4(0, 1, 0, 1), blib::Renderer::Color | blib::Renderer::Depth);
+	renderer->clear(glm::vec4(0.5f, 0.5f, 0.5f, 1), blib::Renderer::Color | blib::Renderer::Depth);
 
 	glm::mat4 projectionMatrix = glm::perspective(45.0f, 1920.0f / 1080.0f, 0.1f, 250.0f);
 
@@ -407,102 +408,6 @@ void Sieged::draw()
 	renderer->unproject(glm::vec2(mouseState.position), &mousePos3d, NULL, cameraMatrix, projectionMatrix);
 
 
-	static int mask[][4][3] = 
-	{
-		{
-			{ 2, 0, 2},
-			{ 1, 1, 1},
-			{ 2, 0, 2},
-			{ 2, 0, 0}
-		},
-		{
-			{ 2, 1, 2 },
-			{ 0, 1, 0 },
-			{ 2, 1, 2 },
-			{ 2, 90, 0 }
-		},
-		{
-			{ 2, 1, 2 },
-			{ 0, 1, 0 },
-			{ 2, 0, 2 },
-			{ 1, 90, 0 },
-		},
-		{
-			{ 2, 0, 2 },
-			{ 0, 1, 0 },
-			{ 2, 1, 2 },
-			{ 1, -90, 0 }
-		},
-		{
-			{ 2, 0, 2 },
-			{ 1, 1, 0 },
-			{ 2, 0, 2 },
-			{ 1, 0, 0 },
-		},
-		{
-			{ 2, 0, 2 },
-			{ 0, 1, 1 },
-			{ 2, 0, 2 },
-			{ 1, 180, 0 }
-		},
-		{
-			{ 2, 0, 2 },
-			{ 0, 1, 1 },
-			{ 2, 1, 2 },
-			{ 3, -90, 0 }
-		}, 
-		{
-			{ 2, 1, 2 },
-			{ 0, 1, 1 },
-			{ 2, 0, 2 },
-			{ 3, 0, 0 }
-		},
-		{
-			{ 2, 1, 2 },
-			{ 1, 1, 0 },
-			{ 2, 0, 2 },
-			{ 3, 90, 0 }
-		},
-		{
-			{ 2, 0, 2 },
-			{ 1, 1, 0 },
-			{ 2, 1, 2 },
-			{ 3, 180, 0 }
-		},
-
-	};
-
-	for (int x = 1; x < 99; x++)
-	{
-		for (int y = 1; y < 99; y++)
-		{
-
-			for (int i = 0; i < 10; i++)
-			{
-				bool match = true;
-				for (int xx = 0; xx < 3; xx++)
-					for (int yy = 0; yy < 3; yy++)
-						if ((tiles[x - 1 + xx][y - 1 + yy]->building == (Building*)1 && mask[i][yy][xx] == 0) ||
-							(tiles[x - 1 + xx][y - 1 + yy]->building != (Building*)1 && mask[i][yy][xx] == 1))
-							match = false;
-				if (match)
-				{
-					glm::mat4 mat;
-					//mat = glm::scale(mat, glm::vec3(2, 1, 2));
-					mat = glm::translate(mat, glm::vec3(x + 0.5, 0, y+0.5f));
-					mat = glm::rotate(mat, (float)mask[i][3][1], glm::vec3(0, 1, 0));
-					if (mask[i][3][0] == 3)
-						mat = glm::rotate(mat, -90.0f, glm::vec3(0, 0, 1));
-
-					renderState.activeShader->setUniform(Uniforms::modelMatrix, mat);
-					renderState.activeShader->setUniform(Uniforms::colorMult, glm::vec4(1, 1, 1, 1.0f));
-					wallModels[mask[i][3][0]]->draw(renderState, renderer, -1);
-
-					break;
-				}
-			}
-		}
-	}
 
 
 	for (auto e : enemies)
@@ -527,7 +432,12 @@ void Sieged::draw()
 		b->buildingTemplate->model->draw(renderState, renderer, -1);
 	}
 
-
+	for (const std::pair<glm::mat4, blib::StaticModel*> &mm : wallCache)
+	{
+		renderState.activeShader->setUniform(Uniforms::modelMatrix, mm.first);
+		renderState.activeShader->setUniform(Uniforms::colorMult, glm::vec4(1, 1, 1, 1.0f));
+		mm.second->draw(renderState, renderer, -1);
+	}
 
 
 
@@ -580,7 +490,7 @@ void Sieged::draw()
 			
 			glm::vec4 diff = maxValues - minValues;
 			glm::mat4 mat;
-
+			
 			if (abs(diff.x) > abs(diff.z))
 			{
 				diff.z = 0;
@@ -747,6 +657,105 @@ void Sieged::calcPaths()
 
 
 
+}
+
+void Sieged::calcWalls()
+{
+	wallCache.clear();
+	static int mask[][4][3] =
+	{
+		{
+			{ 2, 0, 2 },
+			{ 1, 1, 1 },
+			{ 2, 0, 2 },
+			{ 2, 0, 0 }
+		},
+		{
+			{ 2, 1, 2 },
+			{ 0, 1, 0 },
+			{ 2, 1, 2 },
+			{ 2, 90, 0 }
+		},
+		{
+			{ 2, 1, 2 },
+			{ 0, 1, 0 },
+			{ 2, 0, 2 },
+			{ 1, 90, 0 },
+		},
+		{
+			{ 2, 0, 2 },
+			{ 0, 1, 0 },
+			{ 2, 1, 2 },
+			{ 1, -90, 0 }
+		},
+		{
+			{ 2, 0, 2 },
+			{ 1, 1, 0 },
+			{ 2, 0, 2 },
+			{ 1, 0, 0 },
+		},
+		{
+			{ 2, 0, 2 },
+			{ 0, 1, 1 },
+			{ 2, 0, 2 },
+			{ 1, 180, 0 }
+		},
+		{
+			{ 2, 0, 2 },
+			{ 0, 1, 1 },
+			{ 2, 1, 2 },
+			{ 3, -90, 0 }
+		},
+		{
+			{ 2, 1, 2 },
+			{ 0, 1, 1 },
+			{ 2, 0, 2 },
+			{ 3, 0, 0 }
+		},
+		{
+			{ 2, 1, 2 },
+			{ 1, 1, 0 },
+			{ 2, 0, 2 },
+			{ 3, 90, 0 }
+		},
+		{
+			{ 2, 0, 2 },
+			{ 1, 1, 0 },
+			{ 2, 1, 2 },
+			{ 3, 180, 0 }
+		},
+
+	};
+
+	for (int x = 1; x < 99; x++)
+	{
+		for (int y = 1; y < 99; y++)
+		{
+
+			for (int i = 0; i < 10; i++)
+			{
+				bool match = true;
+				for (int xx = 0; xx < 3; xx++)
+					for (int yy = 0; yy < 3; yy++)
+						if ((tiles[x - 1 + xx][y - 1 + yy]->building == (Building*)1 && mask[i][yy][xx] == 0) ||
+							(tiles[x - 1 + xx][y - 1 + yy]->building != (Building*)1 && mask[i][yy][xx] == 1))
+							match = false;
+				if (match)
+				{
+					glm::mat4 mat;
+					//mat = glm::scale(mat, glm::vec3(2, 1, 2));
+					mat = glm::translate(mat, glm::vec3(x + 0.5, 0, y + 0.5f));
+					mat = glm::rotate(mat, (float)mask[i][3][1], glm::vec3(0, 1, 0));
+					if (mask[i][3][0] == 3)
+						mat = glm::rotate(mat, -90.0f, glm::vec3(0, 0, 1));
+
+					wallCache.push_back(std::pair<glm::mat4, blib::StaticModel*>(mat, wallModels[mask[i][3][0]]));
+
+					break;
+				}
+			}
+		}
+	}
 }
 
 

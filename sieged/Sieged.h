@@ -91,6 +91,8 @@ class Sieged : public blib::App
 	std::vector<std::pair<BuildingTemplate*, float> > conveyerBuildings;
 	std::vector<blib::math::Polygon> collisionWalls;
 
+	std::vector<std::pair<glm::mat4, blib::StaticModel*> > wallCache;
+
 	blib::Font* font;
 	blib::Texture* gridTexture;
 	blib::Texture* tileTexture;
@@ -150,4 +152,5 @@ public:
 	virtual void update(double elapsedTime) override;
 	virtual void draw() override;
 	void calcPaths();
+	void calcWalls();
 };
