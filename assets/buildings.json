@@ -5,5 +5,27 @@
 		"beltthumb" :  "assets/textures/buildings/TownHall.png",
 		"model" :  "assets/models/townhall.fbx.json",
 		"size" :  [ 1, 1 ]
-	}
+	},
+	{
+		"id" :  1,
+		"name" :  "Gate",
+		"beltthumb" :  "assets/textures/buildings/TownHall.png",
+		"model" :  "assets/models/townhall.fbx.json",
+		"size" :  [ 1, 1 ]
+	},
+	{
+		"id" :  2,
+		"name" :  "TownHall",
+		"beltthumb" :  "assets/textures/buildings/TownHall.png",
+		"model" :  "assets/models/townhall.fbx.json",
+		"size" :  [ 5, 5 ]
+	},
+	{
+		"id" :  3,
+		"name" :  "StoneMason",
+		"beltthumb" :  "assets/textures/buildings/StoneMason.png",
+		"model" :  "assets/models/stonemason.fbx.json",
+		"size" :  [ 3, 2 ]
+	},
+
 ]
