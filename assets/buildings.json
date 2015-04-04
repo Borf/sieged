@@ -1,0 +1,9 @@
+[
+	{
+		"id" :  0,
+		"name" :  "wall",
+		"beltthumb" :  "assets/textures/buildings/TownHall.png",
+		"model" :  "assets/models/townhall.fbx.json",
+		"size" :  [ 1, 1 ]
+	}
+]

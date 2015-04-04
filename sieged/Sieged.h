@@ -7,7 +7,7 @@
 #include <blib/RenderState.h>
 
 
-namespace blib { class Texture; class Animation; class FBO; class Shader; class AnimatableSprite; class Font; class Shader; }
+namespace blib { class Texture; class Animation; class FBO; class Shader; class AnimatableSprite; class Font; class Shader; class StaticModel;  }
 class Tile;
 typedef std::vector<std::vector<Tile*> > TileMap;
 
@@ -16,22 +16,31 @@ class BuildingTemplate
 public:
 	enum Type
 	{
-		Wall,
+		Wall = 0,
+		Gate,
 		TownHall,
 		StoneMason,
-		Farm,
+		Bank,
+		MineralMine,
 		MarketPlace,
+		Recycler,
 		ArcheryRange,
-		WizardTower,
+		Barracks,
+		BattleArena,
+		ImposingTauntingStatue,
+		TeslaTower,
 		Smithy,
 		Tavern,
 		WatchTower,
 		AlchemyLabs,
+		Workshop,
+		Refinery
 	} type;
 	glm::ivec2 size;
 	blib::TextureMap::TexInfo* texInfo;
+	blib::StaticModel* model;
 
-	BuildingTemplate(Type t, const glm::ivec2 &size, blib::TextureMap::TexInfo* texInfo) { this->type = t; this->size = size; this->texInfo = texInfo;  }
+	BuildingTemplate(Type t, const glm::ivec2 &size, blib::TextureMap::TexInfo* texInfo, blib::StaticModel* model) { this->type = t; this->size = size; this->texInfo = texInfo; this->model = model; }
 };
 
 class Building
@@ -68,9 +77,9 @@ class Enemy
 {
 public:
 	glm::vec2 position;
+	float speed;
 
-
-	Enemy(glm::vec2 p) { this->position = p; }
+	Enemy(glm::vec2 p) { this->position = p; this->speed = blib::math::randomFloat(0.25f, 1.5f); }
 };
 
 class Sieged : public blib::App
@@ -82,13 +91,18 @@ class Sieged : public blib::App
 	std::vector<blib::math::Polygon> collisionWalls;
 
 	blib::Font* font;
+	blib::Texture* gridTexture;
 	blib::Texture* tileTexture;
 	blib::Texture* arrowsTexture;
 	blib::Texture* enemyTexture;
 	blib::Texture* conveyorTexture;
 	blib::TextureMap* conveyorBuildingTextureMap;
-	TileMap tiles;
 
+	TileMap tiles;
+	struct
+	{
+		blib::AnimatableSprite* wall;
+	} buttons;
 
 	glm::vec3 cameraCenter;
 	float cameraDistance;
@@ -98,6 +112,15 @@ class Sieged : public blib::App
 	const float conveyerSpeed = 50;
 	float conveyorOffset;
 
+	glm::vec4 mousePos3d;
+	glm::vec4 mousePos3dBegin;
+
+	enum class BuildMode
+	{
+		Normal,
+		Wall,
+		Destroy
+	} mode;
 
 	blib::MouseState prevMouseState;
 
@@ -111,6 +134,7 @@ class Sieged : public blib::App
 		cameraMatrix,
 		modelMatrix,
 		colorMult,
+		s_texture,
 	};
 
 public:

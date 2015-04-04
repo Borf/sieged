@@ -1,19 +1,19 @@
 attribute vec3 a_position;
+attribute vec4 a_texcoord;
 attribute vec3 a_normal;
-attribute vec4 a_color;
 
 uniform mat4 projectionMatrix;
 uniform mat4 cameraMatrix;
 uniform mat4 modelMatrix;
 
-varying vec4 color;
+varying vec2 texcoord;
 varying vec3 normal;
 varying vec3 pos;
 
 
 void main()
 {
-	color = a_color;
+	texcoord = a_texcoord;
 
 	mat3 normalMatrix = mat3(modelMatrix);
 	normalMatrix = transpose(inverse(normalMatrix));

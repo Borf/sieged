@@ -92,6 +92,41 @@
     <ClInclude Include="..\sieged\Sieged.h" />
   </ItemGroup>
   <ItemGroup>
+    <CustomBuild Include="..\assets\models\townhall.fbx">
+      <FileType>Document</FileType>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">"$(OutDir)\ModelConvert.exe" "%(FullPath)" "%(FullPath).json"</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">%(FullPath).json</Outputs>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">"$(OutDir)\ModelConvert.exe" "%(FullPath)" "%(FullPath).json"</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">%(FullPath).json</Outputs>
+    </CustomBuild>
+    <CustomBuild Include="..\assets\models\bank.fbx">
+      <FileType>Document</FileType>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">"$(OutDir)\ModelConvert.exe" "%(FullPath)" "%(FullPath).json"</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">%(FullPath).json</Outputs>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">"$(OutDir)\ModelConvert.exe" "%(FullPath)" "%(FullPath).json"</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">%(FullPath).json</Outputs>
+    </CustomBuild>
+    <CustomBuild Include="..\assets\models\marketplace.fbx">
+      <FileType>Document</FileType>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">"$(OutDir)\ModelConvert.exe" "%(FullPath)" "%(FullPath).json"</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">%(FullPath).json</Outputs>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">"$(OutDir)\ModelConvert.exe" "%(FullPath)" "%(FullPath).json"</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">%(FullPath).json</Outputs>
+    </CustomBuild>
+    <CustomBuild Include="..\assets\models\mineralmine.fbx">
+      <FileType>Document</FileType>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">"$(OutDir)\ModelConvert.exe" "%(FullPath)" "%(FullPath).json"</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">%(FullPath).json</Outputs>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">"$(OutDir)\ModelConvert.exe" "%(FullPath)" "%(FullPath).json"</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">%(FullPath).json</Outputs>
+    </CustomBuild>
+    <CustomBuild Include="..\assets\models\stonemason.fbx">
+      <FileType>Document</FileType>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">"$(OutDir)\ModelConvert.exe" "%(FullPath)" "%(FullPath).json"</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">%(FullPath).json</Outputs>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">"$(OutDir)\ModelConvert.exe" "%(FullPath)" "%(FullPath).json"</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">%(FullPath).json</Outputs>
+    </CustomBuild>
     <None Include="..\assets\shaders\gl\simple.frag" />
     <None Include="..\assets\shaders\gl\simple.vert" />
   </ItemGroup>

@@ -3,3 +3,4 @@ vs2013/Debug/
 *.sdf
 vs2013/Release/
 Sieged.rar
+assets/models/*.json

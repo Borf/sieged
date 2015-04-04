@@ -19,6 +19,9 @@
     <Filter Include="assets\shaders">
       <UniqueIdentifier>{4fd9287e-2b60-4aaf-8de8-f0edf1162d59}</UniqueIdentifier>
     </Filter>
+    <Filter Include="assets\models">
+      <UniqueIdentifier>{f0c09786-3315-4b87-9eae-aff25dd88ebf}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\sieged\main.cpp">
@@ -40,5 +43,22 @@
     <None Include="..\assets\shaders\gl\simple.vert">
       <Filter>assets\shaders</Filter>
     </None>
+    <None Include="..\assets\models\bank.fbx">
+      <Filter>assets\models</Filter>
+    </None>
+    <None Include="..\assets\models\marketplace.fbx">
+      <Filter>assets\models</Filter>
+    </None>
+    <None Include="..\assets\models\mineralmine.fbx">
+      <Filter>assets\models</Filter>
+    </None>
+    <None Include="..\assets\models\stonemason.fbx">
+      <Filter>assets\models</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="..\assets\models\townhall.fbx">
+      <Filter>assets\models</Filter>
+    </CustomBuild>
   </ItemGroup>
 </Project>

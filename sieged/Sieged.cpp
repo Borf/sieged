@@ -19,12 +19,13 @@
 #include <blib/AnimatableSprite.h>
 #include <clipper/clipper.hpp>
 #include <blib/util/Profiler.h>
+#include <blib/StaticModel.h>
 
 #include <blib/util/Log.h>
 using blib::util::Log;
 
 
-std::vector<blib::VertexP3N3C4> cube;
+std::vector<blib::VertexP3T2N3> cube;
 
 Sieged::Sieged()
 {
@@ -42,46 +43,39 @@ Sieged::Sieged()
 
 void Sieged::init()
 {
-	tileTexture = resourceManager->getResource<blib::Texture>("assets/textures/tiles.png");
+	gridTexture = resourceManager->getResource<blib::Texture>("assets/textures/grid.png");
 	enemyTexture = resourceManager->getResource<blib::Texture>("assets/textures/enemy.png");
 	arrowsTexture = resourceManager->getResource<blib::Texture>("assets/textures/arrows.png");
 	conveyorTexture = resourceManager->getResource<blib::Texture>("assets/textures/conveyor.png");
 	conveyorTexture->setTextureRepeat(true);
+	gridTexture->setTextureRepeat(true);
 	font = resourceManager->getResource<blib::Font>("tahoma");
 
 	conveyorBuildingTextureMap = resourceManager->getResource<blib::TextureMap>();
+	
+	blib::json::Value buildings = blib::util::FileSystem::getJson("assets/buildings.json");
 
-	buildingTemplates[BuildingTemplate::TownHall] = new BuildingTemplate(BuildingTemplate::TownHall, glm::ivec2(2, 2), conveyorBuildingTextureMap->addTexture("assets/textures/buildings/TownHall.png"));
-	buildingTemplates[BuildingTemplate::StoneMason] = new BuildingTemplate(BuildingTemplate::StoneMason, glm::ivec2(2, 3), conveyorBuildingTextureMap->addTexture("assets/textures/buildings/StoneMason.png"));
-	buildingTemplates[BuildingTemplate::Farm] = new BuildingTemplate(BuildingTemplate::Farm, glm::ivec2(), conveyorBuildingTextureMap->addTexture("assets/textures/buildings/Farm.png"));
-	buildingTemplates[BuildingTemplate::MarketPlace] = new BuildingTemplate(BuildingTemplate::MarketPlace, glm::ivec2(4, 5), conveyorBuildingTextureMap->addTexture("assets/textures/buildings/MarketPlace.png"));
-	buildingTemplates[BuildingTemplate::ArcheryRange] = new BuildingTemplate(BuildingTemplate::ArcheryRange, glm::ivec2(3, 6), conveyorBuildingTextureMap->addTexture("assets/textures/buildings/ArcheryRange.png"));
-	buildingTemplates[BuildingTemplate::WizardTower] = new BuildingTemplate(BuildingTemplate::WizardTower, glm::ivec2(), conveyorBuildingTextureMap->addTexture("assets/textures/buildings/WizardTower.png"));
-	buildingTemplates[BuildingTemplate::Smithy] = new BuildingTemplate(BuildingTemplate::Smithy, glm::ivec2(), conveyorBuildingTextureMap->addTexture("assets/textures/buildings/Smithy.png"));
-	buildingTemplates[BuildingTemplate::Tavern] = new BuildingTemplate(BuildingTemplate::Tavern, glm::ivec2(), conveyorBuildingTextureMap->addTexture("assets/textures/buildings/Tavern.png"));
-	buildingTemplates[BuildingTemplate::WatchTower] = new BuildingTemplate(BuildingTemplate::WatchTower, glm::ivec2(), conveyorBuildingTextureMap->addTexture("assets/textures/buildings/WatchTower.png"));
-	buildingTemplates[BuildingTemplate::AlchemyLabs] = new BuildingTemplate(BuildingTemplate::AlchemyLabs, glm::ivec2(), conveyorBuildingTextureMap->addTexture("assets/textures/buildings/AlchemyLabs.png"));
+	for (const blib::json::Value& b : buildings)
+	{
+		buildingTemplates[(BuildingTemplate::Type)b["id"].asInt()] = new BuildingTemplate(
+			(BuildingTemplate::Type)b["id"].asInt() , glm::ivec2(b["size"][0].asInt(), b["size"][1].asInt()),
+			conveyorBuildingTextureMap->addTexture(b["beltthumb"]),
+			new blib::StaticModel(b["model"], resourceManager, renderer));
+	}
+
+	buttons.wall = new blib::AnimatableSprite(resourceManager->getResource<blib::Texture>("assets/textures/hud/btnWall.png"), blib::math::Rectangle(glm::vec2(32, 200), 48,48));
+
+
+
 
 	tiles.resize(100, std::vector<Tile*>(100, nullptr));
 	for (int x = 0; x < 100; x++)
 		for (int y = 0; y < 100; y++)
 			tiles[x][y] = new Tile();
 
-	buildings.push_back(new Building(glm::ivec2(15,7), buildingTemplates[BuildingTemplate::TownHall], tiles));
+	buildings.push_back(new Building(glm::ivec2(15, 7), buildingTemplates[BuildingTemplate::TownHall], tiles));
+	buildings.push_back(new Building(glm::ivec2(20, 15), buildingTemplates[BuildingTemplate::StoneMason], tiles));
 
-
-	for (int ii = 0; ii < 6; ii+=2)
-		for (int i = 0; i < 6+ii*2; i++)
-		{
-			tiles[13 + i - ii][5-ii]->building = (Building*)1;
-			tiles[13-ii][5 + i - ii]->building = (Building*)1;
-			tiles[13+i-ii][10+ii]->building = (Building*)1;
-			tiles[18 + ii][5 + i-ii]->building = (Building*)1;
-		}
-
-	tiles[13][7]->building = NULL;
-	tiles[20][7]->building = NULL;
-	tiles[9][8]->building = NULL;
 
 	calcPaths();
 
@@ -93,45 +87,44 @@ void Sieged::init()
 		enemies.push_back(new Enemy(pos));
 	}
 
-	glm::vec4 color(1, 1, 1, 1);
-
 	for (float i = -0.5f; i <= 0.5f; i += 1)
 	{
-		cube.push_back(blib::VertexP3N3C4(glm::vec3(i, -0.5f, -0.5f), glm::vec3(i, 0, 0), color));
-		cube.push_back(blib::VertexP3N3C4(glm::vec3(i, 0.5f, -0.5f), glm::vec3(i, 0, 0), color));
-		cube.push_back(blib::VertexP3N3C4(glm::vec3(i, -0.5f, 0.5f), glm::vec3(i, 0, 0), color));
+		cube.push_back(blib::VertexP3T2N3(glm::vec3(i, -0.5f, -0.5f), glm::vec2(0,0), glm::vec3(i, 0, 0)));
+		cube.push_back(blib::VertexP3T2N3(glm::vec3(i, 0.5f, -0.5f), glm::vec2(0, 0), glm::vec3(i, 0, 0)));
+		cube.push_back(blib::VertexP3T2N3(glm::vec3(i, -0.5f, 0.5f), glm::vec2(0, 0), glm::vec3(i, 0, 0)));
 
-		cube.push_back(blib::VertexP3N3C4(glm::vec3(i, 0.5f, 0.5f), glm::vec3(i, 0, 0), color));
-		cube.push_back(blib::VertexP3N3C4(glm::vec3(i, 0.5f, -0.5f), glm::vec3(i, 0, 0), color));
-		cube.push_back(blib::VertexP3N3C4(glm::vec3(i, -0.5f, 0.5f), glm::vec3(i, 0, 0), color));
+		cube.push_back(blib::VertexP3T2N3(glm::vec3(i, 0.5f, 0.5f), glm::vec2(0, 0), glm::vec3(i, 0, 0)));
+		cube.push_back(blib::VertexP3T2N3(glm::vec3(i, 0.5f, -0.5f), glm::vec2(0, 0), glm::vec3(i, 0, 0)));
+		cube.push_back(blib::VertexP3T2N3(glm::vec3(i, -0.5f, 0.5f), glm::vec2(0, 0), glm::vec3(i, 0, 0)));
 
-		cube.push_back(blib::VertexP3N3C4(glm::vec3(-0.5f, i, -0.5f), glm::vec3(0, i, 0), color));
-		cube.push_back(blib::VertexP3N3C4(glm::vec3(0.5f, i, -0.5f), glm::vec3(0, i, 0), color));
-		cube.push_back(blib::VertexP3N3C4(glm::vec3(-0.5f, i, 0.5f), glm::vec3(0, i, 0), color));
+		cube.push_back(blib::VertexP3T2N3(glm::vec3(-0.5f, i, -0.5f), glm::vec2(0, 0), glm::vec3(0, i, 0)));
+		cube.push_back(blib::VertexP3T2N3(glm::vec3(0.5f, i, -0.5f), glm::vec2(0, 0), glm::vec3(0, i, 0)));
+		cube.push_back(blib::VertexP3T2N3(glm::vec3(-0.5f, i, 0.5f), glm::vec2(0, 0), glm::vec3(0, i, 0)));
 
-		cube.push_back(blib::VertexP3N3C4(glm::vec3(0.5f, i, 0.5f), glm::vec3(0, i, 0), color));
-		cube.push_back(blib::VertexP3N3C4(glm::vec3(0.5f, i, -0.5f), glm::vec3(0, i, 0), color));
-		cube.push_back(blib::VertexP3N3C4(glm::vec3(-0.5f, i, 0.5f), glm::vec3(0, i, 0), color));
+		cube.push_back(blib::VertexP3T2N3(glm::vec3(0.5f, i, 0.5f), glm::vec2(0, 0), glm::vec3(0, i, 0)));
+		cube.push_back(blib::VertexP3T2N3(glm::vec3(0.5f, i, -0.5f), glm::vec2(0, 0), glm::vec3(0, i, 0)));
+		cube.push_back(blib::VertexP3T2N3(glm::vec3(-0.5f, i, 0.5f), glm::vec2(0, 0), glm::vec3(0, i, 0)));
 
-		cube.push_back(blib::VertexP3N3C4(glm::vec3(-0.5f, -0.5f, i), glm::vec3(0, 0, i), color));
-		cube.push_back(blib::VertexP3N3C4(glm::vec3(0.5f, -0.5f, i), glm::vec3(0, 0, i), color));
-		cube.push_back(blib::VertexP3N3C4(glm::vec3(-0.5f, 0.5f, i), glm::vec3(0, 0, i), color));
+		cube.push_back(blib::VertexP3T2N3(glm::vec3(-0.5f, -0.5f, i), glm::vec2(0, 0), glm::vec3(0, 0, i)));
+		cube.push_back(blib::VertexP3T2N3(glm::vec3(0.5f, -0.5f, i), glm::vec2(0, 0), glm::vec3(0, 0, i)));
+		cube.push_back(blib::VertexP3T2N3(glm::vec3(-0.5f, 0.5f, i), glm::vec2(0, 0), glm::vec3(0, 0, i)));
 
-		cube.push_back(blib::VertexP3N3C4(glm::vec3(0.5f, 0.5f, i), glm::vec3(0, 0, i), color));
-		cube.push_back(blib::VertexP3N3C4(glm::vec3(0.5f, -0.5f, i), glm::vec3(0, 0, i), color));
-		cube.push_back(blib::VertexP3N3C4(glm::vec3(-0.5f, 0.5f, i), glm::vec3(0, 0, i), color));
+		cube.push_back(blib::VertexP3T2N3(glm::vec3(0.5f, 0.5f, i), glm::vec2(0, 0), glm::vec3(0, 0, i)));
+		cube.push_back(blib::VertexP3T2N3(glm::vec3(0.5f, -0.5f, i), glm::vec2(0, 0), glm::vec3(0, 0, i)));
+		cube.push_back(blib::VertexP3T2N3(glm::vec3(-0.5f, 0.5f, i), glm::vec2(0, 0), glm::vec3(0, 0, i)));
 	}
 
 
 
 	backgroundShader = resourceManager->getResource<blib::Shader>("simple");
 	backgroundShader->bindAttributeLocation("a_position", 0);
-	backgroundShader->bindAttributeLocation("a_normal", 1);
-	backgroundShader->bindAttributeLocation("a_color", 2);
+	backgroundShader->bindAttributeLocation("a_texcoord", 1);
+	backgroundShader->bindAttributeLocation("a_normal", 2);
 	backgroundShader->setUniformName(Uniforms::projectionMatrix, "projectionMatrix", blib::Shader::UniformType::Mat4);
 	backgroundShader->setUniformName(Uniforms::cameraMatrix, "cameraMatrix", blib::Shader::UniformType::Mat4);
 	backgroundShader->setUniformName(Uniforms::modelMatrix, "modelMatrix", blib::Shader::UniformType::Mat4);
 	backgroundShader->setUniformName(Uniforms::colorMult, "colorMult", blib::Shader::UniformType::Vec4);
+	backgroundShader->setUniformName(Uniforms::s_texture, "s_texture", blib::Shader::UniformType::Int);
 	
 	backgroundShader->finishUniformSetup();
 
@@ -146,6 +139,8 @@ void Sieged::init()
 
 void Sieged::update(double elapsedTime)
 {
+	if (elapsedTime > 0.1)
+		elapsedTime = 0.1;
 	if (keyState.isPressed(blib::Key::ESC))
 	{
 		running = false;
@@ -156,9 +151,19 @@ void Sieged::update(double elapsedTime)
 	cameraDistance = glm::clamp(cameraDistance, 5.0f, 100.0f);
 	if (mouseState.rightButton)
 	{
-		cameraRotation += (mouseState.position.x - prevMouseState.position.x) / 3.0f;
-		cameraAngle += (mouseState.position.y - prevMouseState.position.y) / 3.0f;
-		cameraAngle = glm::clamp(cameraAngle, 10.0f, 90.0f);
+		if (!keyState.isPressed(blib::Key::SHIFT))
+		{
+			glm::vec2 diff = glm::vec2(mouseState.position - prevMouseState.position) * 0.05f;
+			diff = glm::length(diff) * blib::util::fromAngle(atan2(diff.y, diff.x) + glm::radians(cameraRotation));
+				 
+			cameraCenter -= glm::vec3(diff.x, 0, diff.y);
+		}
+		else
+		{
+			cameraRotation += (mouseState.position.x - prevMouseState.position.x) / 3.0f;
+			cameraAngle += (mouseState.position.y - prevMouseState.position.y) / 3.0f;
+			cameraAngle = glm::clamp(cameraAngle, 10.0f, 90.0f);
+		}
 	}
 
 	/*if (keyState.isPressed(blib::Key::LEFT))
@@ -186,22 +191,22 @@ void Sieged::update(double elapsedTime)
 
 
 		if ((direction & Tile::Left) != 0)
-			e->position.x -= elapsedTime * 1;
+			e->position.x -= elapsedTime * e->speed;
 		if (tiles[(int)(e->position.x)][(int)(e->position.y)]->building)
 			e->position = oldPos;
 		oldPos = e->position;
 		if ((direction & Tile::Right) != 0)
-			e->position.x += elapsedTime * 1;
+			e->position.x += elapsedTime * e->speed;
 		if (tiles[(int)(e->position.x)][(int)(e->position.y)]->building)
 			e->position = oldPos;
 		oldPos = e->position;
 		if ((direction & Tile::Down) != 0)
-			e->position.y += elapsedTime * 1;
+			e->position.y += elapsedTime * e->speed;
 		if (tiles[(int)(e->position.x)][(int)(e->position.y)]->building)
 			e->position = oldPos;
 		oldPos = e->position;
 		if ((direction & Tile::Up) != 0)
-			e->position.y -= elapsedTime * 1;
+			e->position.y -= elapsedTime * e->speed;
 
 		if (tiles[(int)(e->position.x)][(int)(e->position.y)]->building)
 			e->position = oldPos;
@@ -226,49 +231,17 @@ void Sieged::update(double elapsedTime)
 		}
 
 
-	/*	blib::math::Line ray(oldPos, e->position);
-		glm::vec2 point;
-		std::vector<std::pair<glm::vec2, blib::math::Line> > collisions;
-		
-		bool collided = true;
-		while (collided)
-		{
-			collided = false;
-			for (size_t i = 0; i < collisionWalls.size(); i++)
-			{
-				//if (!collisionAabb[i].intersect(ray))
-				//	continue;
-				const blib::math::Polygon& o = collisionWalls[i];
-				if (o.intersects(ray, &collisions))
-				{
-					for (size_t ii = 0; ii < collisions.size(); ii++)
-					{
-						glm::vec2 newPos = collisions[ii].second.project(e->position);
-						e->position = newPos; +.001f * collisions[ii].second.normal();
-						ray.p2 = e->position;
-						collided = true;
-					}
-					break;
-				}
-
-			}
-		}
-		*/
-
-
-
-
 		for (auto ee : enemies)
 		{
 			if (e == ee)
 				continue;
 			glm::vec2 diff = ee->position - e->position;
 			float len = glm::length(diff);
-			if (len < 0.1f && len > 0.001f)
+			if (len < 0.2f && len > 0.001f)
 			{
 				diff /= len;
-				e->position += (0.1f - len) * -0.5f * diff;
-				ee->position += (0.1f - len) * 0.5f * diff;
+				e->position += (0.2f - len) * -0.5f * diff;
+				ee->position += (0.2f - len) * 0.5f * diff;
 			}
 		}
 		if (tiles[(int)(e->position.x)][(int)(e->position.y)]->building)
@@ -290,6 +263,31 @@ void Sieged::update(double elapsedTime)
 		conveyerBuildings[i].second = glm::max(conveyerBuildings[i].second - (float)elapsedTime * conveyerSpeed, 128.0f * i);
 	}
 
+
+	if (mouseState.leftButton && !prevMouseState.leftButton)
+	{
+		mousePos3dBegin = mousePos3d;
+
+		if (buttons.wall->contains(glm::vec2(mouseState.position)))
+		{
+			if (buttons.wall->animations.empty())
+			{
+				buttons.wall->resizeTo(glm::vec2(1.25f, 1.25f), 0.1f, [this]()
+				{
+					buttons.wall->resizeTo(glm::vec2(0.8f, 0.8f), 0.1f);
+				});
+			}
+			if (mode == BuildMode::Wall)
+				mode = BuildMode::Normal;
+			else
+				mode = BuildMode::Wall;
+		}
+	}
+
+
+
+	buttons.wall->update(elapsedTime);
+
 	prevMouseState = mouseState;
 }
 
@@ -299,60 +297,7 @@ void Sieged::draw()
 {
 	renderer->clear(glm::vec4(0, 1, 0, 1), blib::Renderer::Color | blib::Renderer::Depth);
 
-
-//	spriteBatch->begin();
-	
-/*	for (int x = 0; x < 32; x++)
-	{
-		for (int y = 0; y < 18; y++)
-		{
-			if (tiles[x][y]->building)
-				continue;
-			spriteBatch->draw(tileTexture, blib::math::easyMatrix(glm::vec2(64 * x, 64 * y)), glm::vec2(0, 0), blib::math::Rectangle(0.0f, 0.0f, 0.25f, 0.25f));
-		}
-	}
-
-	for (int x = 0; x < 32; x++)
-	{
-		for (int y = 0; y < 18; y++)
-		{
-			if (tiles[x][y]->building)
-				continue;
-
-			glm::vec2 dir(0, 0);
-			if ((tiles[x][y]->toBase & Tile::Left) != 0)
-				dir.x--;
-			if ((tiles[x][y]->toBase & Tile::Right) != 0)
-				dir.x++;
-			if ((tiles[x][y]->toBase & Tile::Up) != 0)
-				dir.y--;
-			if ((tiles[x][y]->toBase & Tile::Down) != 0)
-				dir.y++;
-
-			spriteBatch->draw(arrowsTexture, blib::math::easyMatrix(glm::vec2(64 * x, 64 * y)), glm::vec2(0, 0), blib::math::Rectangle(glm::vec2(0.33f, 0.33f) + .33f * dir, 0.33f, 0.33f));
-
-		}
-	}
-
-	for (auto b : buildings)
-		spriteBatch->draw(tileTexture, blib::math::easyMatrix(glm::vec2(64 * b->position.x, 64 * (b->position.y + b->buildingTemplate->size.y) - 0.75f * tileTexture->originalHeight)), glm::vec2(0, 0), blib::math::Rectangle(0.0f, 0.25f, 0.5f, 0.75f));
-
-	for (auto e : enemies)
-	{
-		spriteBatch->draw(enemyTexture, blib::math::easyMatrix(e->position), glm::vec2(enemyTexture->originalWidth/2, enemyTexture->originalHeight-2));
-	}
-
-
-	glm::ivec2 mousePos(mouseState.position / glm::ivec2(64,64));
-	spriteBatch->draw(tileTexture, blib::math::easyMatrix(glm::vec2(64 * mousePos.x, 64 * mousePos.y)), glm::vec2(0, 0), blib::math::Rectangle(0.25f, 0.0f, 0.25f, 0.25f));
-
-
-
-
-
-	spriteBatch->end();
-	*/
-
+	glm::mat4 projectionMatrix = glm::perspective(45.0f, 1920.0f / 1080.0f, 0.1f, 500.0f);
 
 	glm::mat4 cameraMatrix;
 	cameraMatrix = glm::rotate(cameraMatrix, -10.0f, glm::vec3(1, 0, 0));
@@ -364,23 +309,27 @@ void Sieged::draw()
 
 
 
-	std::vector<blib::VertexP3N3C4> verts;
-	verts.push_back(blib::VertexP3N3C4(glm::vec3(0, 0, 0), glm::vec3(0, 1, 0), glm::vec4(1, 1, 1, 1)));
-	verts.push_back(blib::VertexP3N3C4(glm::vec3(100, 0, 0), glm::vec3(0, 1, 0), glm::vec4(1, 1, 1, 1)));
-	verts.push_back(blib::VertexP3N3C4(glm::vec3(0, 0, 100), glm::vec3(0, 1, 0), glm::vec4(1, 1, 1, 1)));
+	std::vector<blib::VertexP3T2N3> verts;
+	verts.push_back(blib::VertexP3T2N3(glm::vec3(0, 0, 0), glm::vec2(0, 0), glm::vec3(0, 1, 0)));
+	verts.push_back(blib::VertexP3T2N3(glm::vec3(100, 0, 0), glm::vec2(100/8.0f, 0), glm::vec3(0, 1, 0)));
+	verts.push_back(blib::VertexP3T2N3(glm::vec3(0, 0, 100), glm::vec2(0, 100 / 8.0f), glm::vec3(0, 1, 0)));
 
-	verts.push_back(blib::VertexP3N3C4(glm::vec3(100, 0, 100), glm::vec3(0, 1, 0), glm::vec4(1, 1, 1, 1)));
-	verts.push_back(blib::VertexP3N3C4(glm::vec3(100, 0, 0), glm::vec3(0, 1, 0), glm::vec4(1, 1, 1, 1)));
-	verts.push_back(blib::VertexP3N3C4(glm::vec3(0, 0, 100), glm::vec3(0, 1, 0), glm::vec4(1, 1, 1, 1)));
+	verts.push_back(blib::VertexP3T2N3(glm::vec3(100, 0, 100), glm::vec2(100 / 8.0f, 100 / 8.0f), glm::vec3(0, 1, 0)));
+	verts.push_back(blib::VertexP3T2N3(glm::vec3(100, 0, 0), glm::vec2(100 / 8.0f, 0), glm::vec3(0, 1, 0)));
+	verts.push_back(blib::VertexP3T2N3(glm::vec3(0, 0, 100), glm::vec2(0, 100 / 8.0f), glm::vec3(0, 1, 0)));
 
 	renderState.depthTest = true;
 	renderState.activeShader = backgroundShader;
 	renderState.activeShader->setUniform(Uniforms::cameraMatrix, cameraMatrix);
-	renderState.activeShader->setUniform(Uniforms::projectionMatrix, glm::perspective(45.0f, 1920.0f / 1080.0f, 0.1f, 500.0f));
+	renderState.activeShader->setUniform(Uniforms::projectionMatrix, projectionMatrix);
 	renderState.activeShader->setUniform(Uniforms::modelMatrix, glm::mat4());
 	renderState.activeShader->setUniform(Uniforms::colorMult, glm::vec4(1,1,1,1));
+	renderState.activeTexture[0] = gridTexture;
 	renderer->drawTriangles(verts, renderState);
 
+
+
+	renderer->unproject(glm::vec2(mouseState.position), &mousePos3d, NULL, cameraMatrix, projectionMatrix);
 
 
 
@@ -388,7 +337,7 @@ void Sieged::draw()
 	{
 		for (int y = 0; y < 100; y++)
 		{
-			if (tiles[x][y]->building)
+			if (tiles[x][y]->building == (Building*)1)
 			{
 				glm::mat4 mat;
 				//mat = glm::scale(mat, glm::vec3(2, 1, 2));
@@ -412,6 +361,18 @@ void Sieged::draw()
 	}
 
 
+	for (auto b : buildings)
+	{
+		glm::mat4 mat;
+		//mat = glm::scale(mat, glm::vec3(2, 1, 2));
+		mat = glm::translate(mat, glm::vec3(b->position.x + b->buildingTemplate->size.x / 2.0f, 0, b->position.y + b->buildingTemplate->size.y / 2.0f));
+		mat = glm::rotate(mat, 180.0f, glm::vec3(0, 1, 0));
+		renderState.activeShader->setUniform(Uniforms::modelMatrix, mat);
+		renderState.activeShader->setUniform(Uniforms::colorMult, glm::vec4(1, 1, 1, 0.5f));
+		b->buildingTemplate->model->draw(renderState, renderer, -1);
+	}
+
+
 	std::vector<blib::VertexP3N3C4> lineVerts;
 	for (blib::math::Polygon& e : collisionWalls)
 	{
@@ -428,6 +389,56 @@ void Sieged::draw()
 
 
 
+	if (mode == BuildMode::Wall)
+	{
+		if (!mouseState.leftButton)
+		{
+			glm::mat4 mat;
+			//mat = glm::scale(mat, glm::vec3(2, 1, 2));
+			mat = glm::translate(mat, glm::vec3((int)mousePos3d.x + 0.5f, 0.5f, (int)mousePos3d.z + 0.5f));
+			renderState.activeShader->setUniform(Uniforms::modelMatrix, mat);
+			renderState.activeShader->setUniform(Uniforms::colorMult, glm::vec4(1, 1, 1, 0.5f));
+			renderer->drawTriangles(cube, renderState);
+		}
+		else
+		{
+			glm::vec4 minValues = glm::min(mousePos3d, mousePos3dBegin);
+			glm::vec4 maxValues = glm::max(mousePos3d, mousePos3dBegin);
+			
+			glm::vec4 diff = maxValues - minValues;
+			glm::mat4 mat;
+
+			if (abs(diff.x) > abs(diff.z))
+			{
+				diff.z = 0;
+				diff.x = (int)diff.x+1;
+			}
+			else
+			{
+				diff.x = 0;
+				diff.z = (int)diff.z+1;
+			}
+			
+			glm::vec4 center = glm::vec4(glm::ivec4(minValues)) + diff * 0.5f;
+			if (abs(diff.x) > abs(diff.z))
+				center.z += 0.5f;
+			else
+				center.x += 0.5f;
+
+			mat = glm::translate(mat, glm::vec3(center.x, 0.5f, center.z));
+			mat = glm::scale(mat, glm::vec3(glm::max(1.0f, diff.x), 1, glm::max(1.0f, diff.z)));
+			renderState.activeShader->setUniform(Uniforms::modelMatrix, mat);
+			renderState.activeShader->setUniform(Uniforms::colorMult, glm::vec4(1, 1, 1, 0.5f));
+			renderer->drawTriangles(cube, renderState);
+		}
+
+	}
+
+
+
+
+
+
 	spriteBatch->begin();
 
 	for (int i = -128; i < 1920+128; i+=128)
@@ -437,8 +448,14 @@ void Sieged::draw()
 		spriteBatch->draw(b.first->texInfo, blib::math::easyMatrix(glm::vec2(b.second, 1080 - 128+32)));
 
 
+	buttons.wall->draw(spriteBatch);
+
 	spriteBatch->draw(font, "Enemies: " + std::to_string(enemies.size()), blib::math::easyMatrix(glm::vec2(1, 129)), blib::Color::black);
 	spriteBatch->draw(font, "Enemies: " + std::to_string(enemies.size()), blib::math::easyMatrix(glm::vec2(0, 128)));
+
+	spriteBatch->draw(font, "Mouse: " + std::to_string(mousePos3d.x) + ", " + std::to_string(mousePos3d.y) + ", " + std::to_string(mousePos3d.z), blib::math::easyMatrix(glm::vec2(1, 141)), blib::Color::black);
+	spriteBatch->draw(font, "Mouse: " + std::to_string(mousePos3d.x) + ", " + std::to_string(mousePos3d.y) + ", " + std::to_string(mousePos3d.z), blib::math::easyMatrix(glm::vec2(0, 140)));
+
 	spriteBatch->end();
 
 }
