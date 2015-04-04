@@ -43,6 +43,36 @@
     <None Include="..\assets\shaders\gl\simple.vert">
       <Filter>assets\shaders</Filter>
     </None>
+    <None Include="..\assets\models\wall5.fbx">
+      <Filter>assets\models</Filter>
+    </None>
+    <None Include="..\assets\models\wall6.fbx">
+      <Filter>assets\models</Filter>
+    </None>
+    <None Include="..\assets\models\wall1.fbx">
+      <Filter>assets\models</Filter>
+    </None>
+    <None Include="..\assets\models\wall2.fbx">
+      <Filter>assets\models</Filter>
+    </None>
+    <None Include="..\assets\models\wall3.fbx">
+      <Filter>assets\models</Filter>
+    </None>
+    <None Include="..\assets\models\wall4.fbx">
+      <Filter>assets\models</Filter>
+    </None>
+    <None Include="..\assets\models\imposingstatue.fbx">
+      <Filter>assets\models</Filter>
+    </None>
+    <None Include="..\assets\models\barracks.fbx">
+      <Filter>assets\models</Filter>
+    </None>
+    <None Include="..\assets\models\battlearena.fbx">
+      <Filter>assets\models</Filter>
+    </None>
+    <None Include="..\assets\models\smithy.fbx">
+      <Filter>assets\models</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <CustomBuild Include="..\assets\models\townhall.fbx">
@@ -73,6 +103,9 @@
       <Filter>assets\models</Filter>
     </CustomBuild>
     <CustomBuild Include="..\assets\models\archeryrange.fbx">
+      <Filter>assets\models</Filter>
+    </CustomBuild>
+    <CustomBuild Include="..\assets\models\teslatower.fbx">
       <Filter>assets\models</Filter>
     </CustomBuild>
   </ItemGroup>

@@ -99,12 +99,8 @@ class Sieged : public blib::App
 	blib::Texture* conveyorTexture;
 	blib::TextureMap* conveyorBuildingTextureMap;
 
-	struct
-	{
-		blib::StaticModel* corner;
-		blib::StaticModel* inside;
-		blib::StaticModel* straight;
-	} wallModels;
+
+	blib::StaticModel* wallModels[6];
 
 	BuildingTemplate* draggingBuilding;
 	int conveyerDragIndex;

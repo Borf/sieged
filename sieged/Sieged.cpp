@@ -76,13 +76,11 @@ void Sieged::init()
 	}
 
 
-
-	wallModels.corner = new blib::StaticModel("assets/models/wallcorner.fbx.json", resourceManager, renderer);
-	wallModels.corner->meshes[0]->material.texture = resourceManager->getResource<blib::Texture>("assets/models/wallcorner.png");
-	wallModels.inside = new blib::StaticModel("assets/models/wallinside.fbx.json", resourceManager, renderer);
-	wallModels.inside->meshes[0]->material.texture = resourceManager->getResource<blib::Texture>("assets/models/wallinside.png");
-	wallModels.straight = new blib::StaticModel("assets/models/wallstraight.fbx.json", resourceManager, renderer);
-	wallModels.straight->meshes[0]->material.texture = resourceManager->getResource<blib::Texture>("assets/models/wallstraight.png");
+	for (int i = 0; i < 6; i++)
+	{
+		wallModels[i] = new blib::StaticModel("assets/models/wall"+std::to_string(i+1)+".fbx.json", resourceManager, renderer);
+		wallModels[i]->meshes[0]->material.texture = resourceManager->getResource<blib::Texture>("assets/models/wall"+std::to_string(i+1)+".png");
+	}
 
 
 	buttons.wall = new blib::AnimatableSprite(resourceManager->getResource<blib::Texture>("assets/textures/hud/btnWall.png"), blib::math::Rectangle(glm::vec2(32, 200), 48,48));
@@ -409,44 +407,69 @@ void Sieged::draw()
 	renderer->unproject(glm::vec2(mouseState.position), &mousePos3d, NULL, cameraMatrix, projectionMatrix);
 
 
-	static bool mask[][3][3] = 
+	static int mask[][4][3] = 
 	{
 		{
-			{ false, false, false },
-			{ true, true, true },
-			{ false, false, false },
-		},
-		{ 
-			{ false, true, false },
-			{ false, true, false },
-			{ false, true, false },
-		},
-		{ 
-			{ false, true, false },
-			{ false, true, false },
-			{ false, false, false },
-		},
-	};
-	static int wallTiles[][4][2] = 
-	{
-		{
-			{ 0, 180, },
-			{ 0, 180, },
-			{ 0, 0, },
-			{ 0, 0, }
+			{ 2, 0, 2},
+			{ 1, 1, 1},
+			{ 2, 0, 2},
+			{ 2, 0, 0}
 		},
 		{
-			{ 0, -90, },
-			{ 0, 90, },
-			{ 0, -90, },
-			{ 0, 90, }
+			{ 2, 1, 2 },
+			{ 0, 1, 0 },
+			{ 2, 1, 2 },
+			{ 2, 90, 0 }
 		},
 		{
-			{ 0, -90, },
-			{ 0, 90, },
-			{ 1, -90, },
-			{ 1, 90, }
+			{ 2, 1, 2 },
+			{ 0, 1, 0 },
+			{ 2, 0, 2 },
+			{ 1, 90, 0 },
 		},
+		{
+			{ 2, 0, 2 },
+			{ 0, 1, 0 },
+			{ 2, 1, 2 },
+			{ 1, -90, 0 }
+		},
+		{
+			{ 2, 0, 2 },
+			{ 1, 1, 0 },
+			{ 2, 0, 2 },
+			{ 1, 0, 0 },
+		},
+		{
+			{ 2, 0, 2 },
+			{ 0, 1, 1 },
+			{ 2, 0, 2 },
+			{ 1, 180, 0 }
+		},
+		{
+			{ 2, 0, 2 },
+			{ 0, 1, 1 },
+			{ 2, 1, 2 },
+			{ 3, -90, 0 }
+		}, 
+		{
+			{ 2, 1, 2 },
+			{ 0, 1, 1 },
+			{ 2, 0, 2 },
+			{ 3, 0, 0 }
+		},
+		{
+			{ 2, 1, 2 },
+			{ 1, 1, 0 },
+			{ 2, 0, 2 },
+			{ 3, 90, 0 }
+		},
+		{
+			{ 2, 0, 2 },
+			{ 1, 1, 0 },
+			{ 2, 1, 2 },
+			{ 3, 180, 0 }
+		},
+
 	};
 
 	for (int x = 1; x < 99; x++)
@@ -454,31 +477,26 @@ void Sieged::draw()
 		for (int y = 1; y < 99; y++)
 		{
 
-			for (int i = 0; i < 2; i++)
+			for (int i = 0; i < 10; i++)
 			{
 				bool match = true;
-				for (int xx = 0; xx < 2; xx++)
-					for (int yy = 0; yy < 2; yy++)
-						if ((tiles[x - 1 + xx][y - 1 + yy]->building == (Building*)1 && !mask[i][yy][xx]) ||
-							(tiles[x - 1 + xx][y - 1 + yy]->building != (Building*)1 && mask[i][yy][xx]))
+				for (int xx = 0; xx < 3; xx++)
+					for (int yy = 0; yy < 3; yy++)
+						if ((tiles[x - 1 + xx][y - 1 + yy]->building == (Building*)1 && mask[i][yy][xx] == 0) ||
+							(tiles[x - 1 + xx][y - 1 + yy]->building != (Building*)1 && mask[i][yy][xx] == 1))
 							match = false;
 				if (match)
 				{
-					for (int ii = 0; ii < 4; ii++)
-					{
-						int xx = ii % 2;
-						int yy = ii / 2;
-						glm::mat4 mat;
-						//mat = glm::scale(mat, glm::vec3(2, 1, 2));
-						mat = glm::translate(mat, glm::vec3(x + 0.25 + 0.5f * xx, 0, y + 0.25 + 0.5f * yy));
-						mat = glm::rotate(mat, (float)wallTiles[i][ii][1], glm::vec3(0, 1, 0));
-						renderState.activeShader->setUniform(Uniforms::modelMatrix, mat);
-						renderState.activeShader->setUniform(Uniforms::colorMult, glm::vec4(1, 1, 1, 1.0f));
-						if (wallTiles[i][ii][0] == 0)
-							wallModels.straight->draw(renderState, renderer, -1);
-						else if (wallTiles[i][ii][0] == 1)
-							wallModels.corner->draw(renderState, renderer, -1);
-					}
+					glm::mat4 mat;
+					//mat = glm::scale(mat, glm::vec3(2, 1, 2));
+					mat = glm::translate(mat, glm::vec3(x + 0.5, 0, y+0.5f));
+					mat = glm::rotate(mat, (float)mask[i][3][1], glm::vec3(0, 1, 0));
+					if (mask[i][3][0] == 3)
+						mat = glm::rotate(mat, -90.0f, glm::vec3(0, 0, 1));
+
+					renderState.activeShader->setUniform(Uniforms::modelMatrix, mat);
+					renderState.activeShader->setUniform(Uniforms::colorMult, glm::vec4(1, 1, 1, 1.0f));
+					wallModels[mask[i][3][0]]->draw(renderState, renderer, -1);
 
 					break;
 				}
@@ -550,6 +568,7 @@ void Sieged::draw()
 			glm::mat4 mat;
 			//mat = glm::scale(mat, glm::vec3(2, 1, 2));
 			mat = glm::translate(mat, glm::vec3((int)mousePos3d.x + 0.5f, 0.5f, (int)mousePos3d.z + 0.5f));
+			renderState.activeTexture[0] = gridTexture;
 			renderState.activeShader->setUniform(Uniforms::modelMatrix, mat);
 			renderState.activeShader->setUniform(Uniforms::colorMult, glm::vec4(1, 1, 1, 0.5f));
 			renderer->drawTriangles(cube, renderState);
@@ -581,6 +600,7 @@ void Sieged::draw()
 
 			mat = glm::translate(mat, glm::vec3(center.x, 0.5f, center.z));
 			mat = glm::scale(mat, glm::vec3(glm::max(1.0f, diff.x), 1, glm::max(1.0f, diff.z)));
+			renderState.activeTexture[0] = gridTexture;
 			renderState.activeShader->setUniform(Uniforms::modelMatrix, mat);
 			renderState.activeShader->setUniform(Uniforms::colorMult, glm::vec4(1, 1, 1, 0.5f));
 			renderer->drawTriangles(cube, renderState);

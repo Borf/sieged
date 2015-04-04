@@ -162,6 +162,83 @@
       <Command Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">"$(OutDir)\ModelConvert.exe" "%(FullPath)" "%(FullPath).json"</Command>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">%(FullPath).json</Outputs>
     </CustomBuild>
+    <CustomBuild Include="..\assets\models\barracks.fbx">
+      <FileType>Document</FileType>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">"$(OutDir)\ModelConvert.exe" "%(FullPath)" "%(FullPath).json"</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">%(FullPath).json</Outputs>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">"$(OutDir)\ModelConvert.exe" "%(FullPath)" "%(FullPath).json"</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">%(FullPath).json</Outputs>
+    </CustomBuild>
+    <CustomBuild Include="..\assets\models\battlearena.fbx">
+      <FileType>Document</FileType>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">"$(OutDir)\ModelConvert.exe" "%(FullPath)" "%(FullPath).json"</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">%(FullPath).json</Outputs>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">"$(OutDir)\ModelConvert.exe" "%(FullPath)" "%(FullPath).json"</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">%(FullPath).json</Outputs>
+    </CustomBuild>
+    <CustomBuild Include="..\assets\models\imposingstatue.fbx">
+      <FileType>Document</FileType>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">"$(OutDir)\ModelConvert.exe" "%(FullPath)" "%(FullPath).json"</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">%(FullPath).json</Outputs>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">"$(OutDir)\ModelConvert.exe" "%(FullPath)" "%(FullPath).json"</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">%(FullPath).json</Outputs>
+    </CustomBuild>
+    <CustomBuild Include="..\assets\models\smithy.fbx">
+      <FileType>Document</FileType>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">"$(OutDir)\ModelConvert.exe" "%(FullPath)" "%(FullPath).json"</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">%(FullPath).json</Outputs>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">"$(OutDir)\ModelConvert.exe" "%(FullPath)" "%(FullPath).json"</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">%(FullPath).json</Outputs>
+    </CustomBuild>
+    <CustomBuild Include="..\assets\models\teslatower.fbx">
+      <FileType>Document</FileType>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">"$(OutDir)\ModelConvert.exe" "%(FullPath)" "%(FullPath).json"</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">%(FullPath).json</Outputs>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">"$(OutDir)\ModelConvert.exe" "%(FullPath)" "%(FullPath).json"</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">%(FullPath).json</Outputs>
+    </CustomBuild>
+    <CustomBuild Include="..\assets\models\wall1.fbx">
+      <FileType>Document</FileType>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">"$(OutDir)\ModelConvert.exe" "%(FullPath)" "%(FullPath).json"</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">%(FullPath).json</Outputs>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">"$(OutDir)\ModelConvert.exe" "%(FullPath)" "%(FullPath).json"</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">%(FullPath).json</Outputs>
+    </CustomBuild>
+    <CustomBuild Include="..\assets\models\wall2.fbx">
+      <FileType>Document</FileType>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">"$(OutDir)\ModelConvert.exe" "%(FullPath)" "%(FullPath).json"</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">%(FullPath).json</Outputs>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">"$(OutDir)\ModelConvert.exe" "%(FullPath)" "%(FullPath).json"</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">%(FullPath).json</Outputs>
+    </CustomBuild>
+    <CustomBuild Include="..\assets\models\wall3.fbx">
+      <FileType>Document</FileType>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">"$(OutDir)\ModelConvert.exe" "%(FullPath)" "%(FullPath).json"</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">%(FullPath).json</Outputs>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">"$(OutDir)\ModelConvert.exe" "%(FullPath)" "%(FullPath).json"</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">%(FullPath).json</Outputs>
+    </CustomBuild>
+    <CustomBuild Include="..\assets\models\wall4.fbx">
+      <FileType>Document</FileType>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">"$(OutDir)\ModelConvert.exe" "%(FullPath)" "%(FullPath).json"</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">%(FullPath).json</Outputs>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">"$(OutDir)\ModelConvert.exe" "%(FullPath)" "%(FullPath).json"</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">%(FullPath).json</Outputs>
+    </CustomBuild>
+    <CustomBuild Include="..\assets\models\wall5.fbx">
+      <FileType>Document</FileType>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">"$(OutDir)\ModelConvert.exe" "%(FullPath)" "%(FullPath).json"</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">%(FullPath).json</Outputs>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">"$(OutDir)\ModelConvert.exe" "%(FullPath)" "%(FullPath).json"</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">%(FullPath).json</Outputs>
+    </CustomBuild>
+    <CustomBuild Include="..\assets\models\wall6.fbx">
+      <FileType>Document</FileType>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">"$(OutDir)\ModelConvert.exe" "%(FullPath)" "%(FullPath).json"</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">%(FullPath).json</Outputs>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">"$(OutDir)\ModelConvert.exe" "%(FullPath)" "%(FullPath).json"</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">%(FullPath).json</Outputs>
+    </CustomBuild>
     <None Include="..\assets\shaders\gl\simple.frag" />
     <None Include="..\assets\shaders\gl\simple.vert" />
   </ItemGroup>
