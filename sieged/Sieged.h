@@ -79,6 +79,7 @@ class Sieged : public blib::App
 	std::vector<Building*> buildings;
 	std::vector<Enemy*> enemies;
 	std::vector<std::pair<BuildingTemplate*, float> > conveyerBuildings;
+	std::vector<blib::math::Polygon> collisionWalls;
 
 	blib::Font* font;
 	blib::Texture* tileTexture;

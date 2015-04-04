@@ -174,6 +174,7 @@ void Sieged::update(double elapsedTime)
 //	if (keyState.isPressed(blib::Key::MINUS))
 //		zoom *= (float)(1 - elapsedTime);
 
+
 	for (Enemy* e : enemies)
 	{
 		glm::ivec2 tile = glm::ivec2(e->position);
@@ -183,17 +184,78 @@ void Sieged::update(double elapsedTime)
 
 		glm::vec2 oldPos = e->position;
 
+
 		if ((direction & Tile::Left) != 0)
 			e->position.x -= elapsedTime * 1;
+		if (tiles[(int)(e->position.x)][(int)(e->position.y)]->building)
+			e->position = oldPos;
+		oldPos = e->position;
 		if ((direction & Tile::Right) != 0)
 			e->position.x += elapsedTime * 1;
+		if (tiles[(int)(e->position.x)][(int)(e->position.y)]->building)
+			e->position = oldPos;
+		oldPos = e->position;
 		if ((direction & Tile::Down) != 0)
 			e->position.y += elapsedTime * 1;
+		if (tiles[(int)(e->position.x)][(int)(e->position.y)]->building)
+			e->position = oldPos;
+		oldPos = e->position;
 		if ((direction & Tile::Up) != 0)
 			e->position.y -= elapsedTime * 1;
 
-		if (tiles[(int)(e->position.x / 64)][(int)(e->position.y / 64)]->building)
+		if (tiles[(int)(e->position.x)][(int)(e->position.y)]->building)
 			e->position = oldPos;
+		oldPos = e->position;
+
+
+		if (direction == 0) // oops
+		{
+			//find nearest wall
+			glm::vec2 closestPoint;
+			for (const blib::math::Polygon &p : collisionWalls)
+			{
+				for (size_t i = 0; i < p.size(); i++)
+				{
+					int ii = (i + 1) % p.size();
+					glm::vec2 point = blib::math::Line(p[i], p[ii]).project(e->position);
+					if (glm::distance(point, e->position) < glm::distance(closestPoint, e->position))
+						closestPoint = point;
+				}
+			}
+			oldPos = e->position = closestPoint;
+		}
+
+
+	/*	blib::math::Line ray(oldPos, e->position);
+		glm::vec2 point;
+		std::vector<std::pair<glm::vec2, blib::math::Line> > collisions;
+		
+		bool collided = true;
+		while (collided)
+		{
+			collided = false;
+			for (size_t i = 0; i < collisionWalls.size(); i++)
+			{
+				//if (!collisionAabb[i].intersect(ray))
+				//	continue;
+				const blib::math::Polygon& o = collisionWalls[i];
+				if (o.intersects(ray, &collisions))
+				{
+					for (size_t ii = 0; ii < collisions.size(); ii++)
+					{
+						glm::vec2 newPos = collisions[ii].second.project(e->position);
+						e->position = newPos; +.001f * collisions[ii].second.normal();
+						ray.p2 = e->position;
+						collided = true;
+					}
+					break;
+				}
+
+			}
+		}
+		*/
+
+
 
 
 		for (auto ee : enemies)
@@ -209,9 +271,14 @@ void Sieged::update(double elapsedTime)
 				ee->position += (0.1f - len) * 0.5f * diff;
 			}
 		}
-		
+		if (tiles[(int)(e->position.x)][(int)(e->position.y)]->building)
+			e->position = oldPos;
+		oldPos = e->position;
+
 	}
 	
+
+
 
 
 	conveyorOffset += elapsedTime * conveyerSpeed;
@@ -345,6 +412,20 @@ void Sieged::draw()
 	}
 
 
+	std::vector<blib::VertexP3N3C4> lineVerts;
+	for (blib::math::Polygon& e : collisionWalls)
+	{
+		for (int i = 0; i < e.size(); i++)
+		{
+			int ii = (i + 1) % e.size();
+			lineVerts.push_back(blib::VertexP3N3C4(glm::vec3(e[i].x, 1, e[i].y), glm::vec3(0, 1, 0), glm::vec4(0, 0, 1, 1)));
+			lineVerts.push_back(blib::VertexP3N3C4(glm::vec3(e[ii].x, 1, e[ii].y), glm::vec3(0, 1, 0), glm::vec4(0, 0, 1, 1)));
+		}
+	}
+	renderState.activeShader->setUniform(Uniforms::modelMatrix, glm::mat4());
+	renderState.activeShader->setUniform(Uniforms::colorMult, glm::vec4(1, 1, 1, 1));
+	renderer->drawLines(lineVerts, renderState);
+
 
 
 	spriteBatch->begin();
@@ -440,6 +521,8 @@ void Sieged::calcPaths()
 
 
 	ClipperLib::Clipper clipper;
+	ClipperLib::Polygons subject;
+	ClipperLib::Polygons result;
 
 	for (int x = 0; x < 100; x++)
 	{
@@ -447,18 +530,21 @@ void Sieged::calcPaths()
 		{
 			if (!tiles[x][y]->building)
 				continue;
-			ClipperLib::Polygon p;
-			p.push_back(glm::vec2(x, y));
-			p.push_back(glm::vec2(x+1, y));
-			p.push_back(glm::vec2(x+1, y+1));
-			p.push_back(glm::vec2(x, y+1));
-			clipper.AddPolygon(p, ClipperLib::ptClip);
+			subject.push_back(blib::math::Polygon({
+				glm::vec2(x - 0.05f, y - 0.05f),
+				glm::vec2(x + 1.05f, y - 0.05f),
+				glm::vec2(x + 1.05f, y + 1.05f),
+				glm::vec2(x - 0.05f, y + 1.05f),
+			}).toClipperPolygon());
 		}
 	}
-	ClipperLib::Polygons result;
-	clipper.Execute(ClipperLib::ctUnion, result);
 
+	clipper.AddPolygons(subject, ClipperLib::ptClip);
+	clipper.Execute(ClipperLib::ctUnion, result, ClipperLib::pftNonZero, ClipperLib::pftNonZero);
 
+	collisionWalls.clear();
+	for (ClipperLib::Polygon& p : result)
+		collisionWalls.push_back(p);
 
 }
 
