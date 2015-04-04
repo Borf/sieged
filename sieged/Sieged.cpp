@@ -53,14 +53,20 @@ void Sieged::init()
 
 	conveyorBuildingTextureMap = resourceManager->getResource<blib::TextureMap>();
 	
-	blib::json::Value buildings = blib::util::FileSystem::getJson("assets/buildings.json");
+	blib::json::Value buildingDb = blib::util::FileSystem::getJson("assets/buildings.json");
 
-	for (const blib::json::Value& b : buildings)
+	for (const blib::json::Value& b : buildingDb)
 	{
 		buildingTemplates[(BuildingTemplate::Type)b["id"].asInt()] = new BuildingTemplate(
 			(BuildingTemplate::Type)b["id"].asInt() , glm::ivec2(b["size"][0].asInt(), b["size"][1].asInt()),
 			conveyorBuildingTextureMap->addTexture(b["beltthumb"]),
 			new blib::StaticModel(b["model"], resourceManager, renderer));
+
+		std::string texFile = b["model"];
+		texFile = texFile.substr(0, texFile.rfind("."));
+		texFile = texFile.substr(0, texFile.rfind("."))+".png";
+
+		buildingTemplates[(BuildingTemplate::Type)b["id"].asInt()]->model->meshes[0]->material.texture = resourceManager->getResource<blib::Texture>(texFile);
 	}
 
 	buttons.wall = new blib::AnimatableSprite(resourceManager->getResource<blib::Texture>("assets/textures/hud/btnWall.png"), blib::math::Rectangle(glm::vec2(32, 200), 48,48));
@@ -73,13 +79,13 @@ void Sieged::init()
 		for (int y = 0; y < 100; y++)
 			tiles[x][y] = new Tile();
 
-	buildings.push_back(new Building(glm::ivec2(15, 7), buildingTemplates[BuildingTemplate::TownHall], tiles));
-	buildings.push_back(new Building(glm::ivec2(20, 15), buildingTemplates[BuildingTemplate::StoneMason], tiles));
+//	buildings.push_back(new Building(glm::ivec2(15, 7), buildingTemplates[BuildingTemplate::TownHall], tiles));
+//	buildings.push_back(new Building(glm::ivec2(20, 15), buildingTemplates[BuildingTemplate::StoneMason], tiles));
 
 
 	calcPaths();
 
-	while (enemies.size() < 100)
+	while (enemies.size() < 10)
 	{
 		glm::vec2 pos(blib::math::randomFloat(0, 32), blib::math::randomFloat(0, 20));
 		if (tiles[(int)(pos.x)][(int)(pos.y)]->building)
@@ -130,6 +136,7 @@ void Sieged::init()
 
 	conveyorOffset = 0;
 	conveyerBuildings.push_back(std::pair<BuildingTemplate*, float>(buildingTemplates[BuildingTemplate::TownHall], 1920.0f));
+	conveyerBuildings.push_back(std::pair<BuildingTemplate*, float>(buildingTemplates[BuildingTemplate::StoneMason], 1920.0f + 1*64));
 
 	cameraCenter = glm::vec3(16, 0, 15);
 	cameraAngle = 70;
@@ -372,21 +379,22 @@ void Sieged::draw()
 		b->buildingTemplate->model->draw(renderState, renderer, -1);
 	}
 
-
-	std::vector<blib::VertexP3N3C4> lineVerts;
-	for (blib::math::Polygon& e : collisionWalls)
+	if (!collisionWalls.empty())
 	{
-		for (int i = 0; i < e.size(); i++)
+		std::vector<blib::VertexP3N3C4> lineVerts;
+		for (blib::math::Polygon& e : collisionWalls)
 		{
-			int ii = (i + 1) % e.size();
-			lineVerts.push_back(blib::VertexP3N3C4(glm::vec3(e[i].x, 1, e[i].y), glm::vec3(0, 1, 0), glm::vec4(0, 0, 1, 1)));
-			lineVerts.push_back(blib::VertexP3N3C4(glm::vec3(e[ii].x, 1, e[ii].y), glm::vec3(0, 1, 0), glm::vec4(0, 0, 1, 1)));
+			for (int i = 0; i < e.size(); i++)
+			{
+				int ii = (i + 1) % e.size();
+				lineVerts.push_back(blib::VertexP3N3C4(glm::vec3(e[i].x, 1, e[i].y), glm::vec3(0, 1, 0), glm::vec4(0, 0, 1, 1)));
+				lineVerts.push_back(blib::VertexP3N3C4(glm::vec3(e[ii].x, 1, e[ii].y), glm::vec3(0, 1, 0), glm::vec4(0, 0, 1, 1)));
+			}
 		}
+		renderState.activeShader->setUniform(Uniforms::modelMatrix, glm::mat4());
+		renderState.activeShader->setUniform(Uniforms::colorMult, glm::vec4(1, 1, 1, 1));
+		renderer->drawLines(lineVerts, renderState);
 	}
-	renderState.activeShader->setUniform(Uniforms::modelMatrix, glm::mat4());
-	renderState.activeShader->setUniform(Uniforms::colorMult, glm::vec4(1, 1, 1, 1));
-	renderer->drawLines(lineVerts, renderState);
-
 
 
 	if (mode == BuildMode::Wall)
@@ -462,6 +470,9 @@ void Sieged::draw()
 
 void Sieged::calcPaths()
 {
+	if (buildings.empty())
+		return;
+
 	double beginTime = blib::util::Profiler::getAppTime();
 	std::vector<std::vector<float>> costs(100, std::vector<float>(100,9999999));
 	
