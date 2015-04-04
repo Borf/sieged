@@ -19,6 +19,7 @@
 #include <blib/AnimatableSprite.h>
 #include <clipper/clipper.hpp>
 #include <blib/util/Profiler.h>
+#include <blib/BackgroundTask.h>
 #include <blib/StaticModel.h>
 
 #include <blib/util/Log.h>
@@ -37,7 +38,7 @@ Sieged::Sieged()
 	appSetup.vsync = false;
 	appSetup.joystickDriver = blib::AppSetup::DirectInput;
     
-    appSetup.threaded = false;
+	appSetup.threaded = true;
 
 }
 
@@ -135,8 +136,18 @@ void Sieged::init()
 	backgroundShader->finishUniformSetup();
 
 	conveyorOffset = 0;
-	conveyerBuildings.push_back(std::pair<BuildingTemplate*, float>(buildingTemplates[BuildingTemplate::TownHall], 1920.0f));
-	conveyerBuildings.push_back(std::pair<BuildingTemplate*, float>(buildingTemplates[BuildingTemplate::StoneMason], 1920.0f + 1*64));
+	int i = 0;
+	for (auto b : buildingTemplates)
+	{
+		if (b.second->type == BuildingTemplate::Gate || b.second->type == BuildingTemplate::Wall)
+			continue;
+
+		conveyerBuildings.push_back(std::pair<BuildingTemplate*, float>(b.second, 1920.0f + i));
+		i += 75;
+	}
+	draggingBuilding = NULL;
+	conveyerDragIndex = -1;
+
 
 	cameraCenter = glm::vec3(16, 0, 15);
 	cameraAngle = 70;
@@ -172,19 +183,6 @@ void Sieged::update(double elapsedTime)
 			cameraAngle = glm::clamp(cameraAngle, 10.0f, 90.0f);
 		}
 	}
-
-	/*if (keyState.isPressed(blib::Key::LEFT))
-		cameraPos.x -= (float)(500 * elapsedTime);
-	if (keyState.isPressed(blib::Key::RIGHT))
-		cameraPos.x += (float)(500 * elapsedTime);
-	if (keyState.isPressed(blib::Key::UP))
-		cameraPos.y -= (float)(500 * elapsedTime);
-	if (keyState.isPressed(blib::Key::DOWN))
-		cameraPos.y += (float)(500 * elapsedTime);*/
-//	if (keyState.isPressed(blib::Key::PLUS))
-//		zoom *= (float)(1 + elapsedTime);
-//	if (keyState.isPressed(blib::Key::MINUS))
-//		zoom *= (float)(1 - elapsedTime);
 
 
 	for (Enemy* e : enemies)
@@ -267,36 +265,75 @@ void Sieged::update(double elapsedTime)
 
 	for (size_t i = 0; i < conveyerBuildings.size(); i++)
 	{
-		conveyerBuildings[i].second = glm::max(conveyerBuildings[i].second - (float)elapsedTime * conveyerSpeed, 128.0f * i);
+		conveyerBuildings[i].second = glm::max(conveyerBuildings[i].second - (float)elapsedTime * conveyerSpeed, 64.0f * i);
 	}
 
 
 	if (mouseState.leftButton && !prevMouseState.leftButton)
 	{
-		mousePos3dBegin = mousePos3d;
-
-		if (buttons.wall->contains(glm::vec2(mouseState.position)))
+		if (mouseState.position.y > 1080 - 128)
 		{
-			if (buttons.wall->animations.empty())
+			for (size_t i = 0; i < conveyerBuildings.size(); i++)
 			{
-				buttons.wall->resizeTo(glm::vec2(1.25f, 1.25f), 0.1f, [this]()
+				if (blib::math::Rectangle(glm::vec2(conveyerBuildings[i].second, 1080 - 128 + 32), 64, 64).contains(glm::vec2(mouseState.position)))
 				{
-					buttons.wall->resizeTo(glm::vec2(0.8f, 0.8f), 0.1f);
-				});
+					draggingBuilding = conveyerBuildings[i].first;
+					conveyerDragIndex = i;
+				}
 			}
-			if (mode == BuildMode::Wall)
-				mode = BuildMode::Normal;
-			else
-				mode = BuildMode::Wall;
+
+		}
+		else
+		{
+			mousePos3dBegin = mousePos3d;
+			if (buttons.wall->contains(glm::vec2(mouseState.position)))
+			{
+				if (buttons.wall->animations.empty())
+				{
+					buttons.wall->resizeTo(glm::vec2(1.25f, 1.25f), 0.1f, [this]()
+					{
+						buttons.wall->resizeTo(glm::vec2(0.8f, 0.8f), 0.1f);
+					});
+				}
+				if (mode == BuildMode::Wall)
+					mode = BuildMode::Normal;
+				else
+					mode = BuildMode::Wall;
+			}
 		}
 	}
 
+	if (!mouseState.leftButton && prevMouseState.leftButton)
+	{
+		if (draggingBuilding)
+		{
+			if (mouseState.position.y < 1080 - 128)
+			{
+				buildings.push_back(new Building(glm::ivec2(mousePos3d.x - draggingBuilding->size.x/2, mousePos3d.z - draggingBuilding->size.y/2), draggingBuilding, tiles));
+				conveyerBuildings.erase(conveyerBuildings.begin() + conveyerDragIndex);
+				calcPaths();
+			}
+			draggingBuilding = NULL;
+		}
+	}
 
 
 	buttons.wall->update(elapsedTime);
 
 	prevMouseState = mouseState;
 }
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -377,6 +414,16 @@ void Sieged::draw()
 		renderState.activeShader->setUniform(Uniforms::modelMatrix, mat);
 		renderState.activeShader->setUniform(Uniforms::colorMult, glm::vec4(1, 1, 1, 0.5f));
 		b->buildingTemplate->model->draw(renderState, renderer, -1);
+	}
+
+	if(draggingBuilding)
+	{
+		glm::mat4 mat;
+		mat = glm::translate(mat, glm::vec3((int)mousePos3d.x + (draggingBuilding->size.x % 2 == 0 ? 0 : 0.5f), 0, (int)mousePos3d.z + (draggingBuilding->size.y % 2 == 0 ? 0 : 0.5f)));
+		mat = glm::rotate(mat, 180.0f, glm::vec3(0, 1, 0));
+		renderState.activeShader->setUniform(Uniforms::modelMatrix, mat);
+		renderState.activeShader->setUniform(Uniforms::colorMult, glm::vec4(1, 1, 1, 0.5f));
+		draggingBuilding->model->draw(renderState, renderer, -1);
 	}
 
 	if (!collisionWalls.empty())
@@ -472,107 +519,114 @@ void Sieged::calcPaths()
 {
 	if (buildings.empty())
 		return;
-
 	double beginTime = blib::util::Profiler::getAppTime();
-	std::vector<std::vector<float>> costs(100, std::vector<float>(100,9999999));
-	
-	std::list<glm::ivec2> queue;
-	for (int x = 0; x < buildings[0]->buildingTemplate->size.x; x++)
-		for (int y = 0; y < buildings[0]->buildingTemplate->size.y; y++)
-			queue.push_back(buildings[0]->position + glm::ivec2(x,y));
 
-	for (auto p : queue)
-		costs[p.x][p.y] = 0;
-	int a = 0;
-	while (!queue.empty())
+	new blib::BackgroundTask<std::vector<std::vector<float>>>(this, [=, this]()
 	{
-		glm::ivec2 pos = queue.back();
-		queue.pop_back();
+		double beginTime_ = blib::util::Profiler::getAppTime();
+		std::vector<std::vector<float>> costs(100, std::vector<float>(100, 9999999));
+		std::list<glm::ivec2> queue;
+		for (int x = 0; x < buildings[0]->buildingTemplate->size.x; x++)
+			for (int y = 0; y < buildings[0]->buildingTemplate->size.y; y++)
+				queue.push_back(buildings[0]->position + glm::ivec2(x, y));
 
-		for (int x = -1; x <= 1; x++)
+		for (auto p : queue)
+			costs[p.x][p.y] = 0;
+		int a = 0;
+		while (!queue.empty())
 		{
-			for (int y = -1; y <= 1; y++)
+			glm::ivec2 pos = queue.back();
+			queue.pop_back();
+
+			for (int x = -1; x <= 1; x++)
 			{
-				if (x == 0 && y == 0)
-					continue;
-				glm::ivec2 offset(x, y);
-				glm::ivec2 newPos = pos + offset;
-				if (newPos.x < 0 || newPos.x >= 100 || newPos.y < 0 || newPos.y >= 100)
-					continue;
-
-				if (tiles[newPos.x][newPos.y]->building)
-					continue;
-				
-				float newCost = costs[pos.x][pos.y] + glm::length(glm::vec2(offset));
-				if (costs[newPos.x][newPos.y] < newCost)
-					continue;
-				
-				if (!blib::linq::containsValue(queue, newPos))
-					queue.push_front(newPos);
-				costs[newPos.x][newPos.y] = newCost;
-			}
-		}
-	}
-
-
-	for (int x = 0; x < 100; x++)
-	{
-		for (int y = 0; y < 100; y++)
-		{
-			tiles[x][y]->toBase = 0;
-			if (tiles[x][y]->building)
-				continue;
-			glm::ivec2 m(0, 0);
-			for (int xx = -1; xx <= 1; xx++)
-			{
-				for (int yy = -1; yy <= 1; yy++)
+				for (int y = -1; y <= 1; y++)
 				{
-					int xxx = x + xx;
-					int yyy = y + yy;
-					if (xxx < 0 || xxx >= 100 || yyy < 0 || yyy >= 100)
+					if (x == 0 && y == 0)
 						continue;
-					if (costs[xxx][yyy] < costs[x + m.x][y + m.y])
-						m = glm::ivec2(xx, yy);
+					glm::ivec2 offset(x, y);
+					glm::ivec2 newPos = pos + offset;
+					if (newPos.x < 0 || newPos.x >= 100 || newPos.y < 0 || newPos.y >= 100)
+						continue;
+
+					if (tiles[newPos.x][newPos.y]->building)
+						continue;
+
+					float newCost = costs[pos.x][pos.y] + glm::length(glm::vec2(offset));
+					if (costs[newPos.x][newPos.y] < newCost)
+						continue;
+
+					if (!blib::linq::containsValue(queue, newPos))
+						queue.push_front(newPos);
+					costs[newPos.x][newPos.y] = newCost;
 				}
 			}
-			if (m.x < 0)
-				tiles[x][y]->toBase |= Tile::Left;
-			if (m.x > 0)
-				tiles[x][y]->toBase |= Tile::Right;
-			if (m.y < 0)
-				tiles[x][y]->toBase |= Tile::Up;
-			if (m.y > 0)
-				tiles[x][y]->toBase |= Tile::Down;
 		}
-	}
-	Log::out << "Path calculations: " << (blib::util::Profiler::getAppTime() - beginTime) << " s " << Log::newline;
-
-
-	ClipperLib::Clipper clipper;
-	ClipperLib::Polygons subject;
-	ClipperLib::Polygons result;
-
-	for (int x = 0; x < 100; x++)
+		Log::out << "Finding paths: " << (blib::util::Profiler::getAppTime() - beginTime_) << " s " << Log::newline;
+		return costs;
+	}, [=, this](const std::vector<std::vector<float>>& costs)
 	{
-		for (int y = 0; y < 100; y++)
+		for (int x = 0; x < 100; x++)
 		{
-			if (!tiles[x][y]->building)
-				continue;
-			subject.push_back(blib::math::Polygon({
-				glm::vec2(x - 0.05f, y - 0.05f),
-				glm::vec2(x + 1.05f, y - 0.05f),
-				glm::vec2(x + 1.05f, y + 1.05f),
-				glm::vec2(x - 0.05f, y + 1.05f),
-			}).toClipperPolygon());
+			for (int y = 0; y < 100; y++)
+			{
+				tiles[x][y]->toBase = 0;
+				if (tiles[x][y]->building)
+					continue;
+				glm::ivec2 m(0, 0);
+				for (int xx = -1; xx <= 1; xx++)
+				{
+					for (int yy = -1; yy <= 1; yy++)
+					{
+						int xxx = x + xx;
+						int yyy = y + yy;
+						if (xxx < 0 || xxx >= 100 || yyy < 0 || yyy >= 100)
+							continue;
+						if (costs[xxx][yyy] < costs[x + m.x][y + m.y])
+							m = glm::ivec2(xx, yy);
+					}
+				}
+				if (m.x < 0)
+					tiles[x][y]->toBase |= Tile::Left;
+				if (m.x > 0)
+					tiles[x][y]->toBase |= Tile::Right;
+				if (m.y < 0)
+					tiles[x][y]->toBase |= Tile::Up;
+				if (m.y > 0)
+					tiles[x][y]->toBase |= Tile::Down;
+			}
 		}
-	}
+		Log::out << "Path calculations: " << (blib::util::Profiler::getAppTime() - beginTime) << " s " << Log::newline;
+		ClipperLib::Clipper clipper;
+		ClipperLib::Polygons subject;
+		ClipperLib::Polygons result;
 
-	clipper.AddPolygons(subject, ClipperLib::ptClip);
-	clipper.Execute(ClipperLib::ctUnion, result, ClipperLib::pftNonZero, ClipperLib::pftNonZero);
+		for (int x = 0; x < 100; x++)
+		{
+			for (int y = 0; y < 100; y++)
+			{
+				if (!tiles[x][y]->building)
+					continue;
+				subject.push_back(blib::math::Polygon({
+					glm::vec2(x - 0.05f, y - 0.05f),
+					glm::vec2(x + 1.05f, y - 0.05f),
+					glm::vec2(x + 1.05f, y + 1.05f),
+					glm::vec2(x - 0.05f, y + 1.05f),
+				}).toClipperPolygon());
+			}
+		}
 
-	collisionWalls.clear();
-	for (ClipperLib::Polygon& p : result)
-		collisionWalls.push_back(p);
+		clipper.AddPolygons(subject, ClipperLib::ptClip);
+		clipper.Execute(ClipperLib::ctUnion, result, ClipperLib::pftNonZero, ClipperLib::pftNonZero);
+
+		collisionWalls.clear();
+		for (ClipperLib::Polygon& p : result)
+			collisionWalls.push_back(p);
+
+	});
+
+
+
 
 }
 
