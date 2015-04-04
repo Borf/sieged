@@ -58,17 +58,32 @@ void Sieged::init()
 
 	for (const blib::json::Value& b : buildingDb)
 	{
+		blib::StaticModel* m = NULL;
+		if (b["model"].asString() != "")
+			m = new blib::StaticModel(b["model"], resourceManager, renderer);
+
 		buildingTemplates[(BuildingTemplate::Type)b["id"].asInt()] = new BuildingTemplate(
 			(BuildingTemplate::Type)b["id"].asInt() , glm::ivec2(b["size"][0].asInt(), b["size"][1].asInt()),
 			conveyorBuildingTextureMap->addTexture(b["beltthumb"]),
-			new blib::StaticModel(b["model"], resourceManager, renderer));
+			m);
 
 		std::string texFile = b["model"];
 		texFile = texFile.substr(0, texFile.rfind("."));
 		texFile = texFile.substr(0, texFile.rfind("."))+".png";
 
-		buildingTemplates[(BuildingTemplate::Type)b["id"].asInt()]->model->meshes[0]->material.texture = resourceManager->getResource<blib::Texture>(texFile);
+		if (m)
+			buildingTemplates[(BuildingTemplate::Type)b["id"].asInt()]->model->meshes[0]->material.texture = resourceManager->getResource<blib::Texture>(texFile);
 	}
+
+
+
+	wallModels.corner = new blib::StaticModel("assets/models/wallcorner.fbx.json", resourceManager, renderer);
+	wallModels.corner->meshes[0]->material.texture = resourceManager->getResource<blib::Texture>("assets/models/wallcorner.png");
+	wallModels.inside = new blib::StaticModel("assets/models/wallinside.fbx.json", resourceManager, renderer);
+	wallModels.inside->meshes[0]->material.texture = resourceManager->getResource<blib::Texture>("assets/models/wallinside.png");
+	wallModels.straight = new blib::StaticModel("assets/models/wallstraight.fbx.json", resourceManager, renderer);
+	wallModels.straight->meshes[0]->material.texture = resourceManager->getResource<blib::Texture>("assets/models/wallstraight.png");
+
 
 	buttons.wall = new blib::AnimatableSprite(resourceManager->getResource<blib::Texture>("assets/textures/hud/btnWall.png"), blib::math::Rectangle(glm::vec2(32, 200), 48,48));
 
@@ -79,6 +94,20 @@ void Sieged::init()
 	for (int x = 0; x < 100; x++)
 		for (int y = 0; y < 100; y++)
 			tiles[x][y] = new Tile();
+
+
+	for (int ii = 0; ii < 6; ii += 2)
+		for (int i = 0; i < 6 + ii * 2; i++)
+		{
+			tiles[13 + i - ii][5 - ii]->building = (Building*)1;
+			tiles[13 - ii][5 + i - ii]->building = (Building*)1;
+			tiles[13 + i - ii][10 + ii]->building = (Building*)1;
+			tiles[18 + ii][5 + i - ii]->building = (Building*)1;
+		}
+
+	tiles[13][7]->building = NULL;
+	tiles[20][7]->building = NULL;
+	tiles[9][8]->building = NULL;
 
 //	buildings.push_back(new Building(glm::ivec2(15, 7), buildingTemplates[BuildingTemplate::TownHall], tiles));
 //	buildings.push_back(new Building(glm::ivec2(20, 15), buildingTemplates[BuildingTemplate::StoneMason], tiles));
@@ -139,9 +168,8 @@ void Sieged::init()
 	int i = 0;
 	for (auto b : buildingTemplates)
 	{
-		if (b.second->type == BuildingTemplate::Gate || b.second->type == BuildingTemplate::Wall)
+		if (b.second->type == BuildingTemplate::Gate || b.second->type == BuildingTemplate::Wall || !b.second->model || !b.second->texInfo)
 			continue;
-
 		conveyerBuildings.push_back(std::pair<BuildingTemplate*, float>(b.second, 1920.0f + i));
 		i += 75;
 	}
@@ -341,7 +369,7 @@ void Sieged::draw()
 {
 	renderer->clear(glm::vec4(0, 1, 0, 1), blib::Renderer::Color | blib::Renderer::Depth);
 
-	glm::mat4 projectionMatrix = glm::perspective(45.0f, 1920.0f / 1080.0f, 0.1f, 500.0f);
+	glm::mat4 projectionMatrix = glm::perspective(45.0f, 1920.0f / 1080.0f, 0.1f, 250.0f);
 
 	glm::mat4 cameraMatrix;
 	cameraMatrix = glm::rotate(cameraMatrix, -10.0f, glm::vec3(1, 0, 0));
@@ -363,6 +391,11 @@ void Sieged::draw()
 	verts.push_back(blib::VertexP3T2N3(glm::vec3(0, 0, 100), glm::vec2(0, 100 / 8.0f), glm::vec3(0, 1, 0)));
 
 	renderState.depthTest = true;
+	renderState.blendEnabled = true;
+	renderState.srcBlendColor = blib::RenderState::SRC_ALPHA;
+	renderState.srcBlendAlpha = blib::RenderState::SRC_ALPHA;
+	renderState.dstBlendColor = blib::RenderState::ONE_MINUS_SRC_ALPHA;
+	renderState.dstBlendAlpha = blib::RenderState::ONE_MINUS_SRC_ALPHA;
 	renderState.activeShader = backgroundShader;
 	renderState.activeShader->setUniform(Uniforms::cameraMatrix, cameraMatrix);
 	renderState.activeShader->setUniform(Uniforms::projectionMatrix, projectionMatrix);
@@ -376,19 +409,79 @@ void Sieged::draw()
 	renderer->unproject(glm::vec2(mouseState.position), &mousePos3d, NULL, cameraMatrix, projectionMatrix);
 
 
-
-	for (int x = 0; x < 100; x++)
+	static bool mask[][3][3] = 
 	{
-		for (int y = 0; y < 100; y++)
 		{
-			if (tiles[x][y]->building == (Building*)1)
+			{ false, false, false },
+			{ true, true, true },
+			{ false, false, false },
+		},
+		{ 
+			{ false, true, false },
+			{ false, true, false },
+			{ false, true, false },
+		},
+		{ 
+			{ false, true, false },
+			{ false, true, false },
+			{ false, false, false },
+		},
+	};
+	static int wallTiles[][4][2] = 
+	{
+		{
+			{ 0, 180, },
+			{ 0, 180, },
+			{ 0, 0, },
+			{ 0, 0, }
+		},
+		{
+			{ 0, -90, },
+			{ 0, 90, },
+			{ 0, -90, },
+			{ 0, 90, }
+		},
+		{
+			{ 0, -90, },
+			{ 0, 90, },
+			{ 1, -90, },
+			{ 1, 90, }
+		},
+	};
+
+	for (int x = 1; x < 99; x++)
+	{
+		for (int y = 1; y < 99; y++)
+		{
+
+			for (int i = 0; i < 2; i++)
 			{
-				glm::mat4 mat;
-				//mat = glm::scale(mat, glm::vec3(2, 1, 2));
-				mat = glm::translate(mat, glm::vec3(x + 0.5f, 0.5f, y + 0.5f));
-				renderState.activeShader->setUniform(Uniforms::modelMatrix, mat);
-				renderState.activeShader->setUniform(Uniforms::colorMult, glm::vec4(1, 1, 0, 1));
-				renderer->drawTriangles(cube, renderState);
+				bool match = true;
+				for (int xx = 0; xx < 2; xx++)
+					for (int yy = 0; yy < 2; yy++)
+						if ((tiles[x - 1 + xx][y - 1 + yy]->building == (Building*)1 && !mask[i][yy][xx]) ||
+							(tiles[x - 1 + xx][y - 1 + yy]->building != (Building*)1 && mask[i][yy][xx]))
+							match = false;
+				if (match)
+				{
+					for (int ii = 0; ii < 4; ii++)
+					{
+						int xx = ii % 2;
+						int yy = ii / 2;
+						glm::mat4 mat;
+						//mat = glm::scale(mat, glm::vec3(2, 1, 2));
+						mat = glm::translate(mat, glm::vec3(x + 0.25 + 0.5f * xx, 0, y + 0.25 + 0.5f * yy));
+						mat = glm::rotate(mat, (float)wallTiles[i][ii][1], glm::vec3(0, 1, 0));
+						renderState.activeShader->setUniform(Uniforms::modelMatrix, mat);
+						renderState.activeShader->setUniform(Uniforms::colorMult, glm::vec4(1, 1, 1, 1.0f));
+						if (wallTiles[i][ii][0] == 0)
+							wallModels.straight->draw(renderState, renderer, -1);
+						else if (wallTiles[i][ii][0] == 1)
+							wallModels.corner->draw(renderState, renderer, -1);
+					}
+
+					break;
+				}
 			}
 		}
 	}
@@ -412,9 +505,15 @@ void Sieged::draw()
 		mat = glm::translate(mat, glm::vec3(b->position.x + b->buildingTemplate->size.x / 2.0f, 0, b->position.y + b->buildingTemplate->size.y / 2.0f));
 		mat = glm::rotate(mat, 180.0f, glm::vec3(0, 1, 0));
 		renderState.activeShader->setUniform(Uniforms::modelMatrix, mat);
-		renderState.activeShader->setUniform(Uniforms::colorMult, glm::vec4(1, 1, 1, 0.5f));
+		renderState.activeShader->setUniform(Uniforms::colorMult, glm::vec4(1, 1, 1, 1.0f));
 		b->buildingTemplate->model->draw(renderState, renderer, -1);
 	}
+
+
+
+
+
+
 
 	if(draggingBuilding)
 	{

@@ -57,7 +57,7 @@
 	{
 		"id" :  5,
 		"name" :  "MineralMine",
-		"beltthumb" :  "assets/textures/buildings/TowhHall.png",
+		"beltthumb" :  "assets/textures/buildings/MineralMine.png",
 		"model" :  "assets/models/mineralmine.fbx.json",
 		"size" :  [ 1, 1 ],
 		"cost" : 300,

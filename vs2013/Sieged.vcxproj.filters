@@ -43,33 +43,36 @@
     <None Include="..\assets\shaders\gl\simple.vert">
       <Filter>assets\shaders</Filter>
     </None>
-    <None Include="..\assets\models\bank.fbx">
-      <Filter>assets\models</Filter>
-    </None>
-    <None Include="..\assets\models\marketplace.fbx">
-      <Filter>assets\models</Filter>
-    </None>
-    <None Include="..\assets\models\mineralmine.fbx">
-      <Filter>assets\models</Filter>
-    </None>
-    <None Include="..\assets\models\stonemason.fbx">
-      <Filter>assets\models</Filter>
-    </None>
-    <None Include="..\assets\models\wallinside.fbx">
-      <Filter>assets\models</Filter>
-    </None>
-    <None Include="..\assets\models\wallstraight.fbx">
-      <Filter>assets\models</Filter>
-    </None>
-    <None Include="..\assets\models\wallcorner.fbx">
-      <Filter>assets\models</Filter>
-    </None>
-    <None Include="..\assets\models\recycler.fbx">
-      <Filter>assets\models</Filter>
-    </None>
   </ItemGroup>
   <ItemGroup>
     <CustomBuild Include="..\assets\models\townhall.fbx">
+      <Filter>assets\models</Filter>
+    </CustomBuild>
+    <CustomBuild Include="..\assets\models\bank.fbx">
+      <Filter>assets\models</Filter>
+    </CustomBuild>
+    <CustomBuild Include="..\assets\models\marketplace.fbx">
+      <Filter>assets\models</Filter>
+    </CustomBuild>
+    <CustomBuild Include="..\assets\models\mineralmine.fbx">
+      <Filter>assets\models</Filter>
+    </CustomBuild>
+    <CustomBuild Include="..\assets\models\recycler.fbx">
+      <Filter>assets\models</Filter>
+    </CustomBuild>
+    <CustomBuild Include="..\assets\models\stonemason.fbx">
+      <Filter>assets\models</Filter>
+    </CustomBuild>
+    <CustomBuild Include="..\assets\models\wallcorner.fbx">
+      <Filter>assets\models</Filter>
+    </CustomBuild>
+    <CustomBuild Include="..\assets\models\wallinside.fbx">
+      <Filter>assets\models</Filter>
+    </CustomBuild>
+    <CustomBuild Include="..\assets\models\wallstraight.fbx">
+      <Filter>assets\models</Filter>
+    </CustomBuild>
+    <CustomBuild Include="..\assets\models\archeryrange.fbx">
       <Filter>assets\models</Filter>
     </CustomBuild>
   </ItemGroup>
