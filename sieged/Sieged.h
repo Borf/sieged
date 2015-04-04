@@ -64,6 +64,7 @@ public:
 	Tile()
 	{
 		building = NULL;
+		toBase = 0;
 	}
 
 	enum Direction
@@ -98,6 +99,9 @@ class Sieged : public blib::App
 	blib::Texture* conveyorTexture;
 	blib::TextureMap* conveyorBuildingTextureMap;
 
+	BuildingTemplate* draggingBuilding;
+	int conveyerDragIndex;
+
 	TileMap tiles;
 	struct
 	{
@@ -112,8 +116,6 @@ class Sieged : public blib::App
 	const float conveyerSpeed = 50;
 	float conveyorOffset;
 
-	glm::vec4 mousePos3d;
-	glm::vec4 mousePos3dBegin;
 
 	enum class BuildMode
 	{
@@ -123,6 +125,8 @@ class Sieged : public blib::App
 	} mode;
 
 	blib::MouseState prevMouseState;
+	glm::vec4 mousePos3d;
+	glm::vec4 mousePos3dBegin;
 
 	blib::RenderState renderState;
 	blib::Shader* backgroundShader;
