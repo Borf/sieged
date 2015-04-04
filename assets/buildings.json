@@ -4,7 +4,7 @@
 		"name" :  "wall",
 		"beltthumb" :  "assets/textures/buildings/TownHall.png",
 		"model" :  "assets/models/townhall.fbx.json",
-		"size" :  [ 1, 1 ]
+		"size" :  [ 1, 1 ] 
 	},
 	{
 		"id" :  1,
