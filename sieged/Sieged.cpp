@@ -306,6 +306,7 @@ void Sieged::update(double elapsedTime)
 				{
 					draggingBuilding = conveyerBuildings[i].first;
 					conveyerDragIndex = i;
+					mode = BuildMode::Normal;
 				}
 			}
 
@@ -341,6 +342,38 @@ void Sieged::update(double elapsedTime)
 				calcPaths();
 			}
 			draggingBuilding = NULL;
+		}
+		if (mode == BuildMode::Wall)
+		{
+			glm::ivec4 start(mousePos3dBegin);
+			glm::ivec4 end(mousePos3d);
+
+			glm::ivec4 diff = end - start;
+			if (diff.x != 0 || diff.z != 0)
+			{
+				if (glm::abs(diff.x) > glm::abs(diff.z))
+				{
+					diff.x /= abs(diff.x);
+					diff.z = 0;
+				}
+				else
+				{
+					diff.x = 0;
+					diff.z /= abs(diff.z);
+				}
+
+				while ((diff.x != 0 && start.x != end.x) || (diff.z != 0 && start.z != end.z))
+				{
+					tiles[start.x][start.z]->building = (Building*)1;
+					start += diff;
+				}
+				tiles[start.x][start.z]->building = (Building*)1;
+
+				calcWalls();
+				calcPaths();
+
+			}
+
 		}
 	}
 
@@ -692,13 +725,13 @@ void Sieged::calcWalls()
 			{ 2, 0, 2 },
 			{ 1, 1, 0 },
 			{ 2, 0, 2 },
-			{ 1, 0, 0 },
+			{ 1, 180, 0 },
 		},
 		{
 			{ 2, 0, 2 },
 			{ 0, 1, 1 },
 			{ 2, 0, 2 },
-			{ 1, 180, 0 }
+			{ 1, 0, 0 }
 		},
 		{
 			{ 2, 0, 2 },
