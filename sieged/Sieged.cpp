@@ -506,6 +506,7 @@ void Sieged::draw()
 
 	if (mode == BuildMode::Wall)
 	{
+		renderState.depthTest = false;
 		if (!mouseState.leftButton)
 		{
 			glm::mat4 mat;
@@ -549,6 +550,7 @@ void Sieged::draw()
 			renderer->drawTriangles(cube, renderState);
 		}
 
+		renderState.depthTest = true;
 	}
 
 
@@ -727,35 +729,71 @@ void Sieged::calcWalls()
 			{ 2, 0, 2 },
 			{ 1, 180, 0 },
 		},
-		{
+		{ //end4
 			{ 2, 0, 2 },
 			{ 0, 1, 1 },
 			{ 2, 0, 2 },
 			{ 1, 0, 0 }
 		},
-		{
+		{//corner 1
 			{ 2, 0, 2 },
 			{ 0, 1, 1 },
 			{ 2, 1, 2 },
 			{ 3, -90, 0 }
 		},
-		{
+		{//corner 2
 			{ 2, 1, 2 },
 			{ 0, 1, 1 },
 			{ 2, 0, 2 },
 			{ 3, 0, 0 }
 		},
-		{
+		{//corner 3
 			{ 2, 1, 2 },
 			{ 1, 1, 0 },
 			{ 2, 0, 2 },
 			{ 3, 90, 0 }
 		},
-		{
+		{//corner 4
 			{ 2, 0, 2 },
 			{ 1, 1, 0 },
 			{ 2, 1, 2 },
 			{ 3, 180, 0 }
+		},
+		{//T 1
+			{ 2, 0, 2 },
+			{ 1, 1, 1 },
+			{ 2, 1, 2 },
+			{ 4, 0, 0 }
+		},
+		{//T 2
+			{ 2, 1, 2 },
+			{ 1, 1, 1 },
+			{ 2, 0, 2 },
+			{ 4, 180, 0 }
+		},
+		{//T 3
+			{ 2, 1, 2 },
+			{ 1, 1, 0 },
+			{ 2, 1, 2 },
+			{ 4, -90, 0 }
+		},
+		{//T 4
+			{ 2, 1, 2 },
+			{ 0, 1, 1 },
+			{ 2, 1, 2 },
+			{ 4, 90, 0 }
+		},
+		{//+
+			{ 2, 1, 2 },
+			{ 1, 1, 1 },
+			{ 2, 1, 2 },
+			{ 5, 0, 0 }
+		},
+		{//.
+			{ 2, 0, 2 },
+			{ 0, 1, 0 },
+			{ 2, 0, 2 },
+			{ 0, 0, 0 }
 		},
 
 	};
@@ -765,7 +803,7 @@ void Sieged::calcWalls()
 		for (int y = 1; y < 99; y++)
 		{
 
-			for (int i = 0; i < 10; i++)
+			for (int i = 0; i < 16; i++)
 			{
 				bool match = true;
 				for (int xx = 0; xx < 3; xx++)
@@ -781,6 +819,11 @@ void Sieged::calcWalls()
 					mat = glm::rotate(mat, (float)mask[i][3][1], glm::vec3(0, 1, 0));
 					if (mask[i][3][0] == 3)
 						mat = glm::rotate(mat, -90.0f, glm::vec3(0, 0, 1));
+					if (mask[i][3][0] == 4)
+						mat = glm::rotate(mat, 180.0f, glm::vec3(1, 0, 0));
+					if (mask[i][3][0] == 5)
+						mat = glm::rotate(mat, 90.0f, glm::vec3(0, 0, 1));
+
 
 					wallCache.push_back(std::pair<glm::mat4, blib::StaticModel*>(mat, wallModels[mask[i][3][0]]));
 
