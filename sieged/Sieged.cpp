@@ -63,8 +63,7 @@ void Sieged::init()
 			m = new blib::StaticModel(b["model"], resourceManager, renderer);
 
 		buildingTemplates[(BuildingTemplate::Type)b["id"].asInt()] = new BuildingTemplate(
-			(BuildingTemplate::Type)b["id"].asInt() , glm::ivec2(b["size"][0].asInt(), b["size"][1].asInt()),
-			conveyorBuildingTextureMap->addTexture(b["beltthumb"]),
+			b, conveyorBuildingTextureMap,
 			m);
 
 		std::string texFile = b["model"];
@@ -83,7 +82,8 @@ void Sieged::init()
 	}
 
 
-	buttons.wall = new blib::AnimatableSprite(resourceManager->getResource<blib::Texture>("assets/textures/hud/btnWall.png"), blib::math::Rectangle(glm::vec2(32, 200), 48,48));
+	buttons.wall = new blib::AnimatableSprite(resourceManager->getResource<blib::Texture>("assets/textures/hud/btnWall.png"), blib::math::Rectangle(glm::vec2(16, 200), 48, 48));
+	buttons.market = new blib::AnimatableSprite(resourceManager->getResource<blib::Texture>("assets/textures/hud/btnMarket.png"), blib::math::Rectangle(glm::vec2(16, 248), 48, 48));
 
 
 
@@ -92,23 +92,6 @@ void Sieged::init()
 	for (int x = 0; x < 100; x++)
 		for (int y = 0; y < 100; y++)
 			tiles[x][y] = new Tile();
-
-
-	for (int ii = 0; ii < 6; ii += 2)
-		for (int i = 0; i < 6 + ii * 2; i++)
-		{
-			tiles[13 + i - ii][5 - ii]->building = (Building*)1;
-			tiles[13 - ii][5 + i - ii]->building = (Building*)1;
-			tiles[13 + i - ii][10 + ii]->building = (Building*)1;
-			tiles[18 + ii][5 + i - ii]->building = (Building*)1;
-		}
-
-	tiles[13][7]->building = NULL;
-	tiles[20][7]->building = NULL;
-	tiles[9][8]->building = NULL;
-
-//	buildings.push_back(new Building(glm::ivec2(15, 7), buildingTemplates[BuildingTemplate::TownHall], tiles));
-//	buildings.push_back(new Building(glm::ivec2(20, 15), buildingTemplates[BuildingTemplate::StoneMason], tiles));
 
 
 	calcPaths();
@@ -160,6 +143,7 @@ void Sieged::init()
 	backgroundShader->setUniformName(Uniforms::modelMatrix, "modelMatrix", blib::Shader::UniformType::Mat4);
 	backgroundShader->setUniformName(Uniforms::colorMult, "colorMult", blib::Shader::UniformType::Vec4);
 	backgroundShader->setUniformName(Uniforms::s_texture, "s_texture", blib::Shader::UniformType::Int);
+	backgroundShader->setUniformName(Uniforms::buildFactor, "buildFactor", blib::Shader::UniformType::Float);
 	
 	backgroundShader->finishUniformSetup();
 
@@ -221,6 +205,7 @@ void Sieged::update(double elapsedTime)
 
 		glm::vec2 oldPos = e->position;
 
+		glm::vec2 tileCenter = glm::vec2(tile) + glm::vec2(0.5f, 0.5f);
 
 		if ((direction & Tile::Left) != 0)
 			e->position.x -= elapsedTime * e->speed;
@@ -232,6 +217,14 @@ void Sieged::update(double elapsedTime)
 		if (tiles[(int)(e->position.x)][(int)(e->position.y)]->building)
 			e->position = oldPos;
 		oldPos = e->position;
+
+		if ((direction & Tile::Left) == 0 && (direction & Tile::Right) == 0)
+			e->position.x += elapsedTime * (tileCenter.x - e->position.x) * blib::math::randomFloat(0.1f, 0.75f);
+		if (tiles[(int)(e->position.x)][(int)(e->position.y)]->building)
+			e->position = oldPos;
+		oldPos = e->position;
+
+
 		if ((direction & Tile::Down) != 0)
 			e->position.y += elapsedTime * e->speed;
 		if (tiles[(int)(e->position.x)][(int)(e->position.y)]->building)
@@ -239,10 +232,16 @@ void Sieged::update(double elapsedTime)
 		oldPos = e->position;
 		if ((direction & Tile::Up) != 0)
 			e->position.y -= elapsedTime * e->speed;
-
 		if (tiles[(int)(e->position.x)][(int)(e->position.y)]->building)
 			e->position = oldPos;
 		oldPos = e->position;
+
+		if ((direction & Tile::Down) == 0 && (direction & Tile::Up) == 0)
+			e->position.y += elapsedTime * (tileCenter.y - e->position.y) * blib::math::randomFloat(0.1f, 0.75f);
+		if (tiles[(int)(e->position.x)][(int)(e->position.y)]->building)
+			e->position = oldPos;
+		oldPos = e->position;
+
 
 
 		if (direction == 0) // oops
@@ -337,9 +336,19 @@ void Sieged::update(double elapsedTime)
 		{
 			if (mouseState.position.y < 1080 - 128)
 			{
-				buildings.push_back(new Building(glm::ivec2(mousePos3d.x - draggingBuilding->size.x/2, mousePos3d.z - draggingBuilding->size.y/2), draggingBuilding, tiles));
-				conveyerBuildings.erase(conveyerBuildings.begin() + conveyerDragIndex);
-				calcPaths();
+				glm::ivec2 pos(mousePos3d.x - draggingBuilding->size.x / 2, mousePos3d.z - draggingBuilding->size.y / 2);
+				bool ok = true;
+				for (int x = 0; x < draggingBuilding->size.x; x++)
+					for (int y = 0; y < draggingBuilding->size.y; y++)
+						if (tiles[pos.x + x][pos.y + y]->building)
+							ok = false;
+
+				if (ok)
+				{
+					buildings.push_back(new Building(pos, draggingBuilding, tiles));
+					conveyerBuildings.erase(conveyerBuildings.begin() + conveyerDragIndex);
+					calcPaths();
+				}
 			}
 			draggingBuilding = NULL;
 		}
@@ -364,10 +373,14 @@ void Sieged::update(double elapsedTime)
 
 				while ((diff.x != 0 && start.x != end.x) || (diff.z != 0 && start.z != end.z))
 				{
-					tiles[start.x][start.z]->building = (Building*)1;
+					if (!tiles[start.x][start.z]->building)
+						buildings.push_back(new Building(glm::ivec2(start.x, start.z), buildingTemplates[BuildingTemplate::Wall], tiles));
+//					tiles[start.x][start.z]->building = (Building*)1;
 					start += diff;
 				}
-				tiles[start.x][start.z]->building = (Building*)1;
+				//tiles[start.x][start.z]->building = (Building*)1;
+				if (!tiles[start.x][start.z]->building)
+					buildings.push_back(new Building(glm::ivec2(start.x, start.z), buildingTemplates[BuildingTemplate::Wall], tiles));
 
 				calcWalls();
 				calcPaths();
@@ -378,7 +391,20 @@ void Sieged::update(double elapsedTime)
 	}
 
 
+	for (auto b : buildings)
+	{
+		if (b->buildTimeLeft > 0)
+		{
+			b->buildTimeLeft -= elapsedTime;
+			if (b->buildTimeLeft < 0)
+				b->buildTimeLeft = 0;
+			break;
+		}
+	}
+
+
 	buttons.wall->update(elapsedTime);
+	buttons.market->update(elapsedTime);
 
 	prevMouseState = mouseState;
 }
@@ -433,6 +459,7 @@ void Sieged::draw()
 	renderState.activeShader->setUniform(Uniforms::projectionMatrix, projectionMatrix);
 	renderState.activeShader->setUniform(Uniforms::modelMatrix, glm::mat4());
 	renderState.activeShader->setUniform(Uniforms::colorMult, glm::vec4(1,1,1,1));
+	renderState.activeShader->setUniform(Uniforms::buildFactor, 1.0f);
 	renderState.activeTexture[0] = gridTexture;
 	renderer->drawTriangles(verts, renderState);
 
@@ -456,21 +483,27 @@ void Sieged::draw()
 
 	for (auto b : buildings)
 	{
+		if (b->buildingTemplate->type == BuildingTemplate::Wall)
+			continue;
+
 		glm::mat4 mat;
 		//mat = glm::scale(mat, glm::vec3(2, 1, 2));
 		mat = glm::translate(mat, glm::vec3(b->position.x + b->buildingTemplate->size.x / 2.0f, 0, b->position.y + b->buildingTemplate->size.y / 2.0f));
 		mat = glm::rotate(mat, 180.0f, glm::vec3(0, 1, 0));
 		renderState.activeShader->setUniform(Uniforms::modelMatrix, mat);
 		renderState.activeShader->setUniform(Uniforms::colorMult, glm::vec4(1, 1, 1, 1.0f));
+		renderState.activeShader->setUniform(Uniforms::buildFactor, 1 - glm::min(1.0f, b->buildTimeLeft / b->buildingTemplate->buildTime));
 		b->buildingTemplate->model->draw(renderState, renderer, -1);
 	}
 
-	for (const std::pair<glm::mat4, blib::StaticModel*> &mm : wallCache)
+	for (const std::tuple<glm::mat4, Building*, blib::StaticModel*> &mm : wallCache)
 	{
-		renderState.activeShader->setUniform(Uniforms::modelMatrix, mm.first);
+		renderState.activeShader->setUniform(Uniforms::modelMatrix, std::get<0>(mm));
+		renderState.activeShader->setUniform(Uniforms::buildFactor, 1 - glm::min(1.0f, std::get<1>(mm)->buildTimeLeft / std::get<1>(mm)->buildingTemplate->buildTime));
 		renderState.activeShader->setUniform(Uniforms::colorMult, glm::vec4(1, 1, 1, 1.0f));
-		mm.second->draw(renderState, renderer, -1);
+		std::get<2>(mm)->draw(renderState, renderer, -1);
 	}
+	renderState.activeShader->setUniform(Uniforms::buildFactor, 1.0f);
 
 
 
@@ -478,12 +511,25 @@ void Sieged::draw()
 
 	if(draggingBuilding)
 	{
-		glm::mat4 mat;
-		mat = glm::translate(mat, glm::vec3((int)mousePos3d.x + (draggingBuilding->size.x % 2 == 0 ? 0 : 0.5f), 0, (int)mousePos3d.z + (draggingBuilding->size.y % 2 == 0 ? 0 : 0.5f)));
-		mat = glm::rotate(mat, 180.0f, glm::vec3(0, 1, 0));
-		renderState.activeShader->setUniform(Uniforms::modelMatrix, mat);
-		renderState.activeShader->setUniform(Uniforms::colorMult, glm::vec4(1, 1, 1, 0.5f));
-		draggingBuilding->model->draw(renderState, renderer, -1);
+		if (fabs(mousePos3d.y) < 1)
+		{
+			glm::ivec2 pos(mousePos3d.x - draggingBuilding->size.x / 2, mousePos3d.z - draggingBuilding->size.y / 2);
+			bool ok = true;
+			for (int x = 0; x < draggingBuilding->size.x; x++)
+				for (int y = 0; y < draggingBuilding->size.y; y++)
+					if (tiles[pos.x + x][pos.y + y]->building)
+						ok = false;
+
+			glm::mat4 mat;
+			mat = glm::translate(mat, glm::vec3((int)mousePos3d.x + (draggingBuilding->size.x % 2 == 0 ? 0 : 0.5f), 0, (int)mousePos3d.z + (draggingBuilding->size.y % 2 == 0 ? 0 : 0.5f)));
+			mat = glm::rotate(mat, 180.0f, glm::vec3(0, 1, 0));
+			renderState.activeShader->setUniform(Uniforms::modelMatrix, mat);
+			if (ok)
+				renderState.activeShader->setUniform(Uniforms::colorMult, glm::vec4(1, 1, 1, 0.5f));
+			else
+				renderState.activeShader->setUniform(Uniforms::colorMult, glm::vec4(1, 0, 0, 0.5f));
+			draggingBuilding->model->draw(renderState, renderer, -1);
+		}
 	}
 
 	if (!collisionWalls.empty())
@@ -510,8 +556,8 @@ void Sieged::draw()
 		if (!mouseState.leftButton)
 		{
 			glm::mat4 mat;
-			//mat = glm::scale(mat, glm::vec3(2, 1, 2));
-			mat = glm::translate(mat, glm::vec3((int)mousePos3d.x + 0.5f, 0.5f, (int)mousePos3d.z + 0.5f));
+			mat = glm::translate(mat, glm::vec3((int)mousePos3d.x + 0.5f, 0.05f, (int)mousePos3d.z + 0.5f));
+			mat = glm::scale(mat, glm::vec3(1, 0.1f, 1));
 			renderState.activeTexture[0] = gridTexture;
 			renderState.activeShader->setUniform(Uniforms::modelMatrix, mat);
 			renderState.activeShader->setUniform(Uniforms::colorMult, glm::vec4(1, 1, 1, 0.5f));
@@ -519,31 +565,28 @@ void Sieged::draw()
 		}
 		else
 		{
-			glm::vec4 minValues = glm::min(mousePos3d, mousePos3dBegin);
-			glm::vec4 maxValues = glm::max(mousePos3d, mousePos3dBegin);
-			
-			glm::vec4 diff = maxValues - minValues;
+			glm::vec4 diff = mousePos3d - mousePos3dBegin;
 			glm::mat4 mat;
 			
 			if (abs(diff.x) > abs(diff.z))
 			{
 				diff.z = 0;
-				diff.x = (int)diff.x+1;
+				diff.x = glm::round(diff.x);
 			}
 			else
 			{
 				diff.x = 0;
-				diff.z = (int)diff.z+1;
+				diff.z = glm::round(diff.z);
 			}
 			
-			glm::vec4 center = glm::vec4(glm::ivec4(minValues)) + diff * 0.5f;
-			if (abs(diff.x) > abs(diff.z))
-				center.z += 0.5f;
-			else
-				center.x += 0.5f;
+			glm::vec4 center = glm::vec4(glm::ivec4(mousePos3dBegin)) + diff * 0.5f + glm::vec4(0.5f, 0, 0.5f,0);
+			//if (abs(diff.x) > abs(diff.z))
+			//	center.z += 0.5f;
+			//else
+			//	center.x += 0.5f;
 
-			mat = glm::translate(mat, glm::vec3(center.x, 0.5f, center.z));
-			mat = glm::scale(mat, glm::vec3(glm::max(1.0f, diff.x), 1, glm::max(1.0f, diff.z)));
+			mat = glm::translate(mat, glm::vec3(center.x, 0.05f, center.z));
+			mat = glm::scale(mat, glm::vec3(glm::max(1.0f, abs(diff.x)+1), 0.1f, glm::max(1.0f, abs(diff.z)+1)));
 			renderState.activeTexture[0] = gridTexture;
 			renderState.activeShader->setUniform(Uniforms::modelMatrix, mat);
 			renderState.activeShader->setUniform(Uniforms::colorMult, glm::vec4(1, 1, 1, 0.5f));
@@ -568,6 +611,7 @@ void Sieged::draw()
 
 
 	buttons.wall->draw(spriteBatch);
+	buttons.market->draw(spriteBatch);
 
 	spriteBatch->draw(font, "Enemies: " + std::to_string(enemies.size()), blib::math::easyMatrix(glm::vec2(1, 129)), blib::Color::black);
 	spriteBatch->draw(font, "Enemies: " + std::to_string(enemies.size()), blib::math::easyMatrix(glm::vec2(0, 128)));
@@ -808,8 +852,8 @@ void Sieged::calcWalls()
 				bool match = true;
 				for (int xx = 0; xx < 3; xx++)
 					for (int yy = 0; yy < 3; yy++)
-						if ((tiles[x - 1 + xx][y - 1 + yy]->building == (Building*)1 && mask[i][yy][xx] == 0) ||
-							(tiles[x - 1 + xx][y - 1 + yy]->building != (Building*)1 && mask[i][yy][xx] == 1))
+						if ((mask[i][yy][xx] == 0 && tiles[x - 1 + xx][y - 1 + yy]->isWall()) ||
+							(mask[i][yy][xx] == 1 && !tiles[x - 1 + xx][y - 1 + yy]->isWall()))
 							match = false;
 				if (match)
 				{
@@ -825,7 +869,7 @@ void Sieged::calcWalls()
 						mat = glm::rotate(mat, 90.0f, glm::vec3(0, 0, 1));
 
 
-					wallCache.push_back(std::pair<glm::mat4, blib::StaticModel*>(mat, wallModels[mask[i][3][0]]));
+					wallCache.push_back(std::make_tuple(mat, tiles[x][y]->building, wallModels[mask[i][3][0]]));
 
 					break;
 				}
@@ -851,4 +895,14 @@ Building::Building(const glm::ivec2 position, BuildingTemplate* buildingTemplate
 	for (int x = 0; x < buildingTemplate->size.x; x++)
 		for (int y = 0; y < buildingTemplate->size.y; y++)
 			tilemap[position.x + x][position.y + y]->building = this;
+	this->buildTimeLeft = buildingTemplate->buildTime;
+}
+
+BuildingTemplate::BuildingTemplate(const blib::json::Value &data, blib::TextureMap* textureMap, blib::StaticModel* model)
+{
+	this->type = (BuildingTemplate::Type)data["id"].asInt();
+	this->size = glm::ivec2(data["size"][0].asInt(), data["size"][1].asInt());
+	this->texInfo = textureMap->addTexture(data["beltthumb"]);
+	this->model = model;
+	this->buildTime = data["constructiontime"];
 }

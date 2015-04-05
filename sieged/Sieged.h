@@ -7,7 +7,9 @@
 #include <blib/RenderState.h>
 
 
-namespace blib { class Texture; class Animation; class FBO; class Shader; class AnimatableSprite; class Font; class Shader; class StaticModel;  }
+namespace blib { class Texture; class Animation; class FBO; class Shader; class AnimatableSprite; class Font; class Shader; class StaticModel; 
+namespace json { class Value; }
+}
 class Tile;
 typedef std::vector<std::vector<Tile*> > TileMap;
 
@@ -40,7 +42,9 @@ public:
 	blib::TextureMap::TexInfo* texInfo;
 	blib::StaticModel* model;
 
-	BuildingTemplate(Type t, const glm::ivec2 &size, blib::TextureMap::TexInfo* texInfo, blib::StaticModel* model) { this->type = t; this->size = size; this->texInfo = texInfo; this->model = model; }
+	float buildTime;
+
+	BuildingTemplate(const blib::json::Value &data, blib::TextureMap* textureMap, blib::StaticModel* model);
 };
 
 class Building
@@ -48,6 +52,7 @@ class Building
 public:
 	glm::ivec2 position;
 	BuildingTemplate* buildingTemplate;
+	float buildTimeLeft;
 
 	Building(const glm::ivec2 position, BuildingTemplate* buildingTemplate, TileMap& tilemap);
 };
@@ -66,6 +71,8 @@ public:
 		building = NULL;
 		toBase = 0;
 	}
+
+	bool isWall() { if (!building) return false; return building->buildingTemplate->type == BuildingTemplate::Wall; }
 
 	enum Direction
 	{
@@ -91,7 +98,7 @@ class Sieged : public blib::App
 	std::vector<std::pair<BuildingTemplate*, float> > conveyerBuildings;
 	std::vector<blib::math::Polygon> collisionWalls;
 
-	std::vector<std::pair<glm::mat4, blib::StaticModel*> > wallCache;
+	std::vector<std::tuple<glm::mat4, Building*, blib::StaticModel*> > wallCache;
 
 	blib::Font* font;
 	blib::Texture* gridTexture;
@@ -111,6 +118,7 @@ class Sieged : public blib::App
 	struct
 	{
 		blib::AnimatableSprite* wall;
+		blib::AnimatableSprite* market;
 	} buttons;
 
 	glm::vec3 cameraCenter;
@@ -144,6 +152,7 @@ class Sieged : public blib::App
 		modelMatrix,
 		colorMult,
 		s_texture,
+		buildFactor,
 	};
 
 public:
