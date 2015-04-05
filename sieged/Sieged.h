@@ -153,6 +153,7 @@ class Sieged : public blib::App
 		colorMult,
 		s_texture,
 		buildFactor,
+		location,
 	};
 
 public:

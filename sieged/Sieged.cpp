@@ -144,6 +144,8 @@ void Sieged::init()
 	backgroundShader->setUniformName(Uniforms::colorMult, "colorMult", blib::Shader::UniformType::Vec4);
 	backgroundShader->setUniformName(Uniforms::s_texture, "s_texture", blib::Shader::UniformType::Int);
 	backgroundShader->setUniformName(Uniforms::buildFactor, "buildFactor", blib::Shader::UniformType::Float);
+	backgroundShader->setUniformName(Uniforms::location, "location", blib::Shader::UniformType::Vec2);
+	
 	
 	backgroundShader->finishUniformSetup();
 
@@ -493,6 +495,8 @@ void Sieged::draw()
 		renderState.activeShader->setUniform(Uniforms::modelMatrix, mat);
 		renderState.activeShader->setUniform(Uniforms::colorMult, glm::vec4(1, 1, 1, 1.0f));
 		renderState.activeShader->setUniform(Uniforms::buildFactor, 1 - glm::min(1.0f, b->buildTimeLeft / b->buildingTemplate->buildTime));
+		renderState.activeShader->setUniform(Uniforms::location, glm::vec2(b->position));
+		
 		b->buildingTemplate->model->draw(renderState, renderer, -1);
 	}
 
@@ -501,6 +505,7 @@ void Sieged::draw()
 		renderState.activeShader->setUniform(Uniforms::modelMatrix, std::get<0>(mm));
 		renderState.activeShader->setUniform(Uniforms::buildFactor, 1 - glm::min(1.0f, std::get<1>(mm)->buildTimeLeft / std::get<1>(mm)->buildingTemplate->buildTime));
 		renderState.activeShader->setUniform(Uniforms::colorMult, glm::vec4(1, 1, 1, 1.0f));
+		renderState.activeShader->setUniform(Uniforms::location, glm::vec2(std::get<1>(mm)->position));
 		std::get<2>(mm)->draw(renderState, renderer, -1);
 	}
 	renderState.activeShader->setUniform(Uniforms::buildFactor, 1.0f);
