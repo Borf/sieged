@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 2013
-VisualStudioVersion = 12.0.31101.0
+VisualStudioVersion = 12.0.40302.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Sieged", "Sieged.vcxproj", "{BA7053FD-AE36-4826-983B-654800C6DFB6}"
 	ProjectSection(ProjectDependencies) = postProject
@@ -12,6 +12,9 @@ EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "blib", "..\blib\blib.vcxproj", "{22D5CA69-1AFF-4025-AC86-A4F056D79B53}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ModelConvert", "..\modelconvert\vs2013\ModelConvert.vcxproj", "{219681E7-2D82-4F6D-9C93-442A2E8C5321}"
+	ProjectSection(ProjectDependencies) = postProject
+		{22D5CA69-1AFF-4025-AC86-A4F056D79B53} = {22D5CA69-1AFF-4025-AC86-A4F056D79B53}
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
