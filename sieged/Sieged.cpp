@@ -511,7 +511,7 @@ void Sieged::draw()
 
 
 	float fac = 1.0f;
-	glm::mat4 shadowProjectionMatrix = glm::ortho<float>(-fac * cameraDistance, fac * cameraDistance, -fac * cameraDistance, fac * cameraDistance, -50, 150);
+	glm::mat4 shadowProjectionMatrix = glm::ortho<float>(-fac * cameraDistance, fac * cameraDistance, -fac * cameraDistance, fac * cameraDistance, -50, 50);
 	glm::mat4 shadowCameraMatrix = glm::lookAt(glm::vec3(0.5f, 2, 2) + cameraCenter, glm::vec3(0, 0, 0) + cameraCenter, glm::vec3(0, 1, 0));
 
 	renderState.activeShader = backgroundShader;// shadowmapShader;
@@ -655,7 +655,7 @@ void Sieged::drawWorld(RenderPass renderPass)
 		}
 	}
 
-	if (!collisionWalls.empty())
+	if (!collisionWalls.empty() && renderPass == RenderPass::Final)
 	{
 		std::vector<blib::VertexP3N3C4> lineVerts;
 		for (blib::math::Polygon& e : collisionWalls)

@@ -190,6 +190,9 @@ void main()
 	float bias = 0.001*tan(acos(cosTheta)); // cosTheta is dot( n,l ), clamped between 0 and 1
 	bias = clamp(abs(bias), 0,0.01);
 
+	bias = 0.01f;
+
+
 	float visibility = 1.0;
 	if ( texture2D( s_shadowmap, shadowPos.xy ).z  <  shadowPos.z - bias){
 		visibility = 0.1;
