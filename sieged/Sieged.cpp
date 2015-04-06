@@ -51,9 +51,8 @@ void Sieged::init()
 	conveyorTexture->setTextureRepeat(true);
 	gridTexture->setTextureRepeat(true);
 	font = resourceManager->getResource<blib::Font>("tahoma");
-
 	conveyorBuildingTextureMap = resourceManager->getResource<blib::TextureMap>();
-
+	
 
 	blib::json::Value settings = blib::util::FileSystem::getJson("assets/settings.json");
 	conveyorBuildingsPerSecond = settings["blueprintspersecond"];
@@ -140,6 +139,13 @@ void Sieged::init()
 		cube.push_back(blib::VertexP3T2N3(glm::vec3(-0.5f, 0.5f, i), glm::vec2(0, 0), glm::vec3(0, 0, i)));
 	}
 
+	shadowMap = resourceManager->getResource<blib::FBO>();
+	shadowMap->setSize(4048, 4048);
+	shadowMap->depth = false;
+	shadowMap->depthTexture = true;
+	shadowMap->stencil = false;
+	shadowMap->textureCount = 0;
+
 
 
 	backgroundShader = resourceManager->getResource<blib::Shader>("simple");
@@ -151,26 +157,38 @@ void Sieged::init()
 	backgroundShader->setUniformName(Uniforms::modelMatrix, "modelMatrix", blib::Shader::UniformType::Mat4);
 	backgroundShader->setUniformName(Uniforms::colorMult, "colorMult", blib::Shader::UniformType::Vec4);
 	backgroundShader->setUniformName(Uniforms::s_texture, "s_texture", blib::Shader::UniformType::Int);
+	backgroundShader->setUniformName(Uniforms::s_shadowmap, "s_shadowmap", blib::Shader::UniformType::Int);
 	backgroundShader->setUniformName(Uniforms::buildFactor, "buildFactor", blib::Shader::UniformType::Float);
 	backgroundShader->setUniformName(Uniforms::location, "location", blib::Shader::UniformType::Vec2);
-	
-	
+	backgroundShader->setUniformName(Uniforms::shadowProjectionMatrix, "shadowProjectionMatrix", blib::Shader::UniformType::Mat4);
+	backgroundShader->setUniformName(Uniforms::shadowCameraMatrix, "shadowCameraMatrix", blib::Shader::UniformType::Mat4);
 	backgroundShader->finishUniformSetup();
+	backgroundShader->setUniform(Uniforms::s_texture, 0);
+	backgroundShader->setUniform(Uniforms::s_shadowmap, 1);
+
+	/*shadowmapShader = resourceManager->getResource<blib::Shader>("shadowmap");
+	shadowmapShader->bindAttributeLocation("a_position", 0);
+	shadowmapShader->setUniformName(Uniforms::projectionMatrix, "projectionMatrix", blib::Shader::UniformType::Mat4);
+	shadowmapShader->setUniformName(Uniforms::cameraMatrix, "cameraMatrix", blib::Shader::UniformType::Mat4);
+	shadowmapShader->setUniformName(Uniforms::modelMatrix, "modelMatrix", blib::Shader::UniformType::Mat4);
+	shadowmapShader->finishUniformSetup();*/
+
+
+	renderState.depthTest = true;
+	renderState.blendEnabled = true;
+	renderState.srcBlendColor = blib::RenderState::SRC_ALPHA;
+	renderState.srcBlendAlpha = blib::RenderState::SRC_ALPHA;
+	renderState.dstBlendColor = blib::RenderState::ONE_MINUS_SRC_ALPHA;
+	renderState.dstBlendAlpha = blib::RenderState::ONE_MINUS_SRC_ALPHA;
+	renderState.activeShader = backgroundShader;
+
+
 
 	conveyorOffset = 0;
-/*	int i = 0;
-	for (auto b : buildingTemplates)
-	{
-		if (b.second->type == BuildingTemplate::Gate || b.second->type == BuildingTemplate::Wall || !b.second->model || !b.second->texInfo)
-			continue;
-		conveyerBuildings.push_back(std::pair<BuildingTemplate*, float>(b.second, 1920.0f + i));
-		i += 75;
-	}*/
-
-	conveyorBuildings.push_back(std::pair<BuildingTemplate*, float>(buildingTemplates[BuildingTemplate::TownHall], 1920.0f));
 	lastConveyorBuilding = 1 / conveyorBuildingsPerSecond;
 	draggingBuilding = NULL;
 	conveyorDragIndex = -1;
+	conveyorBuildings.push_back(std::pair<BuildingTemplate*, float>(buildingTemplates[BuildingTemplate::TownHall], 1920.0f));
 
 
 	cameraCenter = glm::vec3(16, 0, 15);
@@ -480,11 +498,10 @@ void Sieged::update(double elapsedTime)
 
 void Sieged::draw()
 {
-	renderer->clear(glm::vec4(0.5f, 0.5f, 0.5f, 1), blib::Renderer::Color | blib::Renderer::Depth);
 
-	glm::mat4 projectionMatrix = glm::perspective(45.0f, 1920.0f / 1080.0f, 0.1f, 250.0f);
+	projectionMatrix = glm::perspective(45.0f, 1920.0f / 1080.0f, 1.0f, 250.0f);
 
-	glm::mat4 cameraMatrix;
+	cameraMatrix = glm::mat4();
 	cameraMatrix = glm::rotate(cameraMatrix, -10.0f, glm::vec3(1, 0, 0));
 	cameraMatrix = glm::translate(cameraMatrix, glm::vec3(0, 0, -cameraDistance));
 	cameraMatrix = glm::rotate(cameraMatrix, cameraAngle, glm::vec3(1, 0, 0));
@@ -493,34 +510,82 @@ void Sieged::draw()
 	cameraMatrix = glm::translate(cameraMatrix, -cameraCenter);
 
 
+	float fac = 1.0f;
+	glm::mat4 shadowProjectionMatrix = glm::ortho<float>(-fac * cameraDistance, fac * cameraDistance, -fac * cameraDistance, fac * cameraDistance, -50, 150);
+	glm::mat4 shadowCameraMatrix = glm::lookAt(glm::vec3(0.5f, 2, 2) + cameraCenter, glm::vec3(0, 0, 0) + cameraCenter, glm::vec3(0, 1, 0));
 
+	renderState.activeShader = backgroundShader;// shadowmapShader;
+	renderState.activeShader->setUniform(Uniforms::cameraMatrix, shadowCameraMatrix);
+	renderState.activeShader->setUniform(Uniforms::projectionMatrix, shadowProjectionMatrix);
+
+	renderState.activeFbo = shadowMap;
+	renderer->setViewPort(0, 0, shadowMap->width, shadowMap->height);
+	renderer->clear(glm::vec4(1, 1, 1, 1), blib::Renderer::Color | blib::Renderer::Depth, renderState);
+	drawWorld(RenderPass::ShadowMap);
+
+	renderState.activeFbo = NULL;
+	renderer->setViewPort(0, 0, 1920, 1079);
+	renderer->clear(glm::vec4(0.5f, 0.5f, 0.5f, 1), blib::Renderer::Color | blib::Renderer::Depth, renderState);
+
+
+	renderState.activeTexture[1] = shadowMap;
+	renderState.activeShader = backgroundShader;
+	renderState.activeShader->setUniform(Uniforms::shadowCameraMatrix, shadowCameraMatrix);
+	renderState.activeShader->setUniform(Uniforms::shadowProjectionMatrix, shadowProjectionMatrix);
+
+	renderState.activeShader->setUniform(Uniforms::cameraMatrix, cameraMatrix);
+	renderState.activeShader->setUniform(Uniforms::projectionMatrix, projectionMatrix);
+	drawWorld(RenderPass::Final);
+
+
+
+	spriteBatch->begin();
+
+	spriteBatch->draw(shadowMap, blib::math::easyMatrix(glm::vec2(250,224), 0, glm::vec2(0.05f, -0.05f)));
+
+	for (int i = -128; i < 1920+128; i+=128)
+		spriteBatch->draw(conveyorTexture, blib::math::easyMatrix(glm::vec2(-conveyorOffset + i, 1080 - 128)));
+
+	for (auto b : conveyorBuildings)
+		spriteBatch->draw(b.first->texInfo, blib::math::easyMatrix(glm::vec2(b.second, 1080 - 128+32)));
+
+
+	buttons.wall->draw(spriteBatch);
+	buttons.market->draw(spriteBatch);
+
+	spriteBatch->draw(font, "Enemies: " + std::to_string(enemies.size()), blib::math::easyMatrix(glm::vec2(1, 129)), blib::Color::black);
+	spriteBatch->draw(font, "Enemies: " + std::to_string(enemies.size()), blib::math::easyMatrix(glm::vec2(0, 128)));
+
+	spriteBatch->draw(font, "Mouse: " + std::to_string(mousePos3d.x) + ", " + std::to_string(mousePos3d.y) + ", " + std::to_string(mousePos3d.z), blib::math::easyMatrix(glm::vec2(1, 141)), blib::Color::black);
+	spriteBatch->draw(font, "Mouse: " + std::to_string(mousePos3d.x) + ", " + std::to_string(mousePos3d.y) + ", " + std::to_string(mousePos3d.z), blib::math::easyMatrix(glm::vec2(0, 140)));
+
+	spriteBatch->end();
+
+}
+
+
+
+
+void Sieged::drawWorld(RenderPass renderPass)
+{
 	std::vector<blib::VertexP3T2N3> verts;
 	verts.push_back(blib::VertexP3T2N3(glm::vec3(0, 0, 0), glm::vec2(0, 0), glm::vec3(0, 1, 0)));
-	verts.push_back(blib::VertexP3T2N3(glm::vec3(100, 0, 0), glm::vec2(100/8.0f, 0), glm::vec3(0, 1, 0)));
+	verts.push_back(blib::VertexP3T2N3(glm::vec3(100, 0, 0), glm::vec2(100 / 8.0f, 0), glm::vec3(0, 1, 0)));
 	verts.push_back(blib::VertexP3T2N3(glm::vec3(0, 0, 100), glm::vec2(0, 100 / 8.0f), glm::vec3(0, 1, 0)));
 
 	verts.push_back(blib::VertexP3T2N3(glm::vec3(100, 0, 100), glm::vec2(100 / 8.0f, 100 / 8.0f), glm::vec3(0, 1, 0)));
 	verts.push_back(blib::VertexP3T2N3(glm::vec3(100, 0, 0), glm::vec2(100 / 8.0f, 0), glm::vec3(0, 1, 0)));
 	verts.push_back(blib::VertexP3T2N3(glm::vec3(0, 0, 100), glm::vec2(0, 100 / 8.0f), glm::vec3(0, 1, 0)));
 
-	renderState.depthTest = true;
-	renderState.blendEnabled = true;
-	renderState.srcBlendColor = blib::RenderState::SRC_ALPHA;
-	renderState.srcBlendAlpha = blib::RenderState::SRC_ALPHA;
-	renderState.dstBlendColor = blib::RenderState::ONE_MINUS_SRC_ALPHA;
-	renderState.dstBlendAlpha = blib::RenderState::ONE_MINUS_SRC_ALPHA;
-	renderState.activeShader = backgroundShader;
-	renderState.activeShader->setUniform(Uniforms::cameraMatrix, cameraMatrix);
-	renderState.activeShader->setUniform(Uniforms::projectionMatrix, projectionMatrix);
 	renderState.activeShader->setUniform(Uniforms::modelMatrix, glm::mat4());
-	renderState.activeShader->setUniform(Uniforms::colorMult, glm::vec4(1,1,1,1));
+	renderState.activeShader->setUniform(Uniforms::colorMult, glm::vec4(1, 1, 1, 1));
 	renderState.activeShader->setUniform(Uniforms::buildFactor, 1.0f);
 	renderState.activeTexture[0] = gridTexture;
 	renderer->drawTriangles(verts, renderState);
 
 
-
-	renderer->unproject(glm::vec2(mouseState.position), &mousePos3d, NULL, cameraMatrix, projectionMatrix);
+	if (renderPass == RenderPass::Final)
+		renderer->unproject(glm::vec2(mouseState.position), &mousePos3d, NULL, cameraMatrix, projectionMatrix);
 
 
 
@@ -549,7 +614,7 @@ void Sieged::draw()
 		renderState.activeShader->setUniform(Uniforms::colorMult, glm::vec4(1, 1, 1, 1.0f));
 		renderState.activeShader->setUniform(Uniforms::buildFactor, 1 - glm::min(1.0f, b->buildTimeLeft / b->buildingTemplate->buildTime));
 		renderState.activeShader->setUniform(Uniforms::location, glm::vec2(b->position));
-		
+
 		b->buildingTemplate->model->draw(renderState, renderer, -1);
 	}
 
@@ -567,7 +632,7 @@ void Sieged::draw()
 
 
 
-	if(draggingBuilding)
+	if (draggingBuilding)
 	{
 		if (fabs(mousePos3d.y) < 1)
 		{
@@ -625,7 +690,7 @@ void Sieged::draw()
 		{
 			glm::vec4 diff = mousePos3d - mousePos3dBegin;
 			glm::mat4 mat;
-			
+
 			if (abs(diff.x) > abs(diff.z))
 			{
 				diff.z = 0;
@@ -636,15 +701,15 @@ void Sieged::draw()
 				diff.x = 0;
 				diff.z = glm::round(diff.z);
 			}
-			
-			glm::vec4 center = glm::vec4(glm::ivec4(mousePos3dBegin)) + diff * 0.5f + glm::vec4(0.5f, 0, 0.5f,0);
+
+			glm::vec4 center = glm::vec4(glm::ivec4(mousePos3dBegin)) + diff * 0.5f + glm::vec4(0.5f, 0, 0.5f, 0);
 			//if (abs(diff.x) > abs(diff.z))
 			//	center.z += 0.5f;
 			//else
 			//	center.x += 0.5f;
 
 			mat = glm::translate(mat, glm::vec3(center.x, 0.05f, center.z));
-			mat = glm::scale(mat, glm::vec3(glm::max(1.0f, abs(diff.x)+1), 0.1f, glm::max(1.0f, abs(diff.z)+1)));
+			mat = glm::scale(mat, glm::vec3(glm::max(1.0f, abs(diff.x) + 1), 0.1f, glm::max(1.0f, abs(diff.z) + 1)));
 			renderState.activeTexture[0] = gridTexture;
 			renderState.activeShader->setUniform(Uniforms::modelMatrix, mat);
 			renderState.activeShader->setUniform(Uniforms::colorMult, glm::vec4(1, 1, 1, 0.5f));
@@ -653,33 +718,11 @@ void Sieged::draw()
 
 		renderState.depthTest = true;
 	}
-
-
-
-
-
-
-	spriteBatch->begin();
-
-	for (int i = -128; i < 1920+128; i+=128)
-		spriteBatch->draw(conveyorTexture, blib::math::easyMatrix(glm::vec2(-conveyorOffset + i, 1080 - 128)));
-
-	for (auto b : conveyorBuildings)
-		spriteBatch->draw(b.first->texInfo, blib::math::easyMatrix(glm::vec2(b.second, 1080 - 128+32)));
-
-
-	buttons.wall->draw(spriteBatch);
-	buttons.market->draw(spriteBatch);
-
-	spriteBatch->draw(font, "Enemies: " + std::to_string(enemies.size()), blib::math::easyMatrix(glm::vec2(1, 129)), blib::Color::black);
-	spriteBatch->draw(font, "Enemies: " + std::to_string(enemies.size()), blib::math::easyMatrix(glm::vec2(0, 128)));
-
-	spriteBatch->draw(font, "Mouse: " + std::to_string(mousePos3d.x) + ", " + std::to_string(mousePos3d.y) + ", " + std::to_string(mousePos3d.z), blib::math::easyMatrix(glm::vec2(1, 141)), blib::Color::black);
-	spriteBatch->draw(font, "Mouse: " + std::to_string(mousePos3d.x) + ", " + std::to_string(mousePos3d.y) + ", " + std::to_string(mousePos3d.z), blib::math::easyMatrix(glm::vec2(0, 140)));
-
-	spriteBatch->end();
-
 }
+
+
+
+
 
 void Sieged::calcPaths()
 {
@@ -793,12 +836,7 @@ void Sieged::calcPaths()
 			collisionWalls.push_back(p);
 
 	});
-
-
-
-
 }
-
 void Sieged::calcWalls()
 {
 	wallCache.clear();
@@ -938,6 +976,7 @@ void Sieged::calcWalls()
 		}
 	}
 }
+
 
 
 

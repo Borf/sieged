@@ -1,6 +1,7 @@
 #version 120
 
 uniform sampler2D s_texture;
+uniform sampler2D s_shadowmap;
 uniform vec4 colorMult;
 uniform float buildFactor;
 uniform vec2 location;
@@ -8,6 +9,8 @@ uniform vec2 location;
 varying vec2 texcoord;
 varying vec3 normal;
 varying vec3 pos;
+varying vec3 shadowPos;
+varying vec3 LightDirection_cameraspace;
 
 
 #define M_PI 3.1415926535897932384626433832795
@@ -171,6 +174,28 @@ vec2 cellular(vec2 P) {
 
 void main()
 {
+	// Normal of the computed fragment, in camera space
+	vec3 n = normalize( normal);
+	// Direction of the light (from the fragment to the light)
+	vec3 l = normalize( LightDirection_cameraspace );
+	// Cosine of the angle between the normal and the light direction, 
+	// clamped above 0
+	//  - light is at the vertical of the triangle -> 1
+	//  - light is perpendiular to the triangle -> 0
+	//  - light is behind the triangle -> 0
+	float cosTheta = clamp( dot( n,l ), 0,1 );
+
+
+
+	float bias = 0.001*tan(acos(cosTheta)); // cosTheta is dot( n,l ), clamped between 0 and 1
+	bias = clamp(abs(bias), 0,0.01);
+
+	float visibility = 1.0;
+	if ( texture2D( s_shadowmap, shadowPos.xy ).z  <  shadowPos.z - bias){
+		visibility = 0.1;
+	}
+
+
 	float diffuse = dot(normalize(normal), normalize(vec3(0.5,1,0.5)));
 	diffuse = clamp(diffuse, 0.0,1.0);
 
@@ -179,10 +204,13 @@ void main()
 	vec4 color = texture2D(s_texture, texcoord);
 
 
-	float n = clamp(abs(cellular(texcoord + location)), 0, 1);
-	//float n = clamp(abs(snoise(vec3(texcoord,0.0))), 0.0, 1.0);
-	if(n > buildFactor)
+	float noiseFac = clamp(abs(cellular(texcoord + location)), 0, 1);
+	//float noiseFac = clamp(abs(snoise(vec3(texcoord,0.0))), 0.0, 1.0);
+	if(noiseFac > buildFactor)
 		discard;//color.rgb = vec3(0,0,0);
+
+
+	light *= visibility;
 
 
 	gl_FragColor = vec4(colorMult.rgb * color.rgb * light, colorMult.a * color.a);

@@ -110,6 +110,8 @@ class Sieged : public blib::App
 	blib::TextureMap* conveyorBuildingTextureMap;
 
 
+	blib::FBO* shadowMap;
+
 	blib::StaticModel* wallModels[6];
 
 	BuildingTemplate* draggingBuilding;
@@ -152,6 +154,7 @@ class Sieged : public blib::App
 	glm::vec4 mousePos3dBegin;
 
 	blib::RenderState renderState;
+	blib::Shader* shadowmapShader;
 	blib::Shader* backgroundShader;
 	blib::Shader* characterShader;
 
@@ -162,15 +165,31 @@ class Sieged : public blib::App
 		modelMatrix,
 		colorMult,
 		s_texture,
+		s_shadowmap,
 		buildFactor,
 		location,
+
+		shadowProjectionMatrix,
+		shadowCameraMatrix,
 	};
+	glm::mat4 cameraMatrix;
+	glm::mat4 projectionMatrix;
 
 public:
 	Sieged();
 	virtual void init() override;
 	virtual void update(double elapsedTime) override;
 	virtual void draw() override;
+	
+
+	enum class RenderPass
+	{
+		ShadowMap,
+		Final,
+	};
+
+	void drawWorld(RenderPass renderPass);
+
 	void calcPaths();
 	void calcWalls();
 };
