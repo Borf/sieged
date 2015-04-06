@@ -53,9 +53,14 @@ void Sieged::init()
 	font = resourceManager->getResource<blib::Font>("tahoma");
 
 	conveyorBuildingTextureMap = resourceManager->getResource<blib::TextureMap>();
+
+
+	blib::json::Value settings = blib::util::FileSystem::getJson("assets/settings.json");
+	conveyorBuildingsPerSecond = settings["blueprintspersecond"];
+	stoneMasonFactor = settings["stonemasonfactor"];
+
 	
 	blib::json::Value buildingDb = blib::util::FileSystem::getJson("assets/buildings.json");
-
 	for (const blib::json::Value& b : buildingDb)
 	{
 		blib::StaticModel* m = NULL;
@@ -73,6 +78,7 @@ void Sieged::init()
 		if (m)
 			buildingTemplates[(BuildingTemplate::Type)b["id"].asInt()]->model->meshes[0]->material.texture = resourceManager->getResource<blib::Texture>(texFile);
 	}
+	rngTotalWeight = blib::linq::sum<int>(buildingTemplates, [](std::pair < BuildingTemplate::Type, BuildingTemplate*> item){ return glm::max(0, item.second->rngWeight); });
 
 
 	for (int i = 0; i < 6; i++)
@@ -84,6 +90,8 @@ void Sieged::init()
 
 	buttons.wall = new blib::AnimatableSprite(resourceManager->getResource<blib::Texture>("assets/textures/hud/btnWall.png"), blib::math::Rectangle(glm::vec2(16, 200), 48, 48));
 	buttons.market = new blib::AnimatableSprite(resourceManager->getResource<blib::Texture>("assets/textures/hud/btnMarket.png"), blib::math::Rectangle(glm::vec2(16, 248), 48, 48));
+
+	buttons.wall->color = glm::vec4(1, 1, 1, 0);
 
 
 
@@ -150,16 +158,19 @@ void Sieged::init()
 	backgroundShader->finishUniformSetup();
 
 	conveyorOffset = 0;
-	int i = 0;
+/*	int i = 0;
 	for (auto b : buildingTemplates)
 	{
 		if (b.second->type == BuildingTemplate::Gate || b.second->type == BuildingTemplate::Wall || !b.second->model || !b.second->texInfo)
 			continue;
 		conveyerBuildings.push_back(std::pair<BuildingTemplate*, float>(b.second, 1920.0f + i));
 		i += 75;
-	}
+	}*/
+
+	conveyorBuildings.push_back(std::pair<BuildingTemplate*, float>(buildingTemplates[BuildingTemplate::TownHall], 1920.0f));
+	lastConveyorBuilding = 1 / conveyorBuildingsPerSecond;
 	draggingBuilding = NULL;
-	conveyerDragIndex = -1;
+	conveyorDragIndex = -1;
 
 
 	cameraCenter = glm::vec3(16, 0, 15);
@@ -287,13 +298,13 @@ void Sieged::update(double elapsedTime)
 
 
 
-	conveyorOffset += elapsedTime * conveyerSpeed;
+	conveyorOffset += elapsedTime * conveyorSpeed;
 	while (conveyorOffset > 128)
 		conveyorOffset -= 128;
 
-	for (size_t i = 0; i < conveyerBuildings.size(); i++)
+	for (size_t i = 0; i < conveyorBuildings.size(); i++)
 	{
-		conveyerBuildings[i].second = glm::max(conveyerBuildings[i].second - (float)elapsedTime * conveyerSpeed, 64.0f * i);
+		conveyorBuildings[i].second = glm::max(conveyorBuildings[i].second - (float)elapsedTime * conveyorSpeed, 64.0f * i);
 	}
 
 
@@ -301,12 +312,12 @@ void Sieged::update(double elapsedTime)
 	{
 		if (mouseState.position.y > 1080 - 128)
 		{
-			for (size_t i = 0; i < conveyerBuildings.size(); i++)
+			for (size_t i = 0; i < conveyorBuildings.size(); i++)
 			{
-				if (blib::math::Rectangle(glm::vec2(conveyerBuildings[i].second, 1080 - 128 + 32), 64, 64).contains(glm::vec2(mouseState.position)))
+				if (blib::math::Rectangle(glm::vec2(conveyorBuildings[i].second, 1080 - 128 + 32), 64, 64).contains(glm::vec2(mouseState.position)))
 				{
-					draggingBuilding = conveyerBuildings[i].first;
-					conveyerDragIndex = i;
+					draggingBuilding = conveyorBuildings[i].first;
+					conveyorDragIndex = i;
 					mode = BuildMode::Normal;
 				}
 			}
@@ -348,7 +359,7 @@ void Sieged::update(double elapsedTime)
 				if (ok)
 				{
 					buildings.push_back(new Building(pos, draggingBuilding, tiles));
-					conveyerBuildings.erase(conveyerBuildings.begin() + conveyerDragIndex);
+					conveyorBuildings.erase(conveyorBuildings.begin() + conveyorDragIndex);
 					calcPaths();
 				}
 			}
@@ -392,14 +403,56 @@ void Sieged::update(double elapsedTime)
 		}
 	}
 
+	if (blib::linq::contains(buildings, [](Building* b){ return b->buildingTemplate->type == BuildingTemplate::TownHall; }))
+	{
+		lastConveyorBuilding -= elapsedTime;
+		if (lastConveyorBuilding <= 0)
+		{
+			int rng = rand() % rngTotalWeight;
+			bool bla = false;
+			for (auto b : buildingTemplates)
+			{
+				if (b.second->rngWeight <= 0)
+					continue;
+				if (rng < b.second->rngWeight)
+				{
+					conveyorBuildings.push_back(std::pair<BuildingTemplate*, float>(b.second, 1920.0f));
+					bla = true;
+					break;
+				}
+				rng -= b.second->rngWeight;
+			}
+			lastConveyorBuilding = 1 / conveyorBuildingsPerSecond;
+		}
+	}
+
+
 
 	for (auto b : buildings)
 	{
-		if (b->buildTimeLeft > 0)
+		if (b->buildTimeLeft > 0 && b->buildingTemplate->type == BuildingTemplate::Wall)
+		{
+			b->buildTimeLeft -= elapsedTime * wallBuildSpeed;
+			if (b->buildTimeLeft < 0)
+				b->buildTimeLeft = 0;
+			break;
+		}
+	}
+	for (auto b : buildings)
+	{
+		if (b->buildTimeLeft > 0 && b->buildingTemplate->type != BuildingTemplate::Wall)
 		{
 			b->buildTimeLeft -= elapsedTime;
 			if (b->buildTimeLeft < 0)
+			{
 				b->buildTimeLeft = 0;
+
+				if (b->buildingTemplate->type == BuildingTemplate::StoneMason)
+				{
+					buttons.wall->alphaTo(1.0f, 1);
+					wallBuildSpeed = 1 + (blib::linq::count(buildings, [](Building* b) { return b->buildingTemplate->type == BuildingTemplate::StoneMason; }) - 1) * stoneMasonFactor;
+				}
+			}
 			break;
 		}
 	}
@@ -611,7 +664,7 @@ void Sieged::draw()
 	for (int i = -128; i < 1920+128; i+=128)
 		spriteBatch->draw(conveyorTexture, blib::math::easyMatrix(glm::vec2(-conveyorOffset + i, 1080 - 128)));
 
-	for (auto b : conveyerBuildings)
+	for (auto b : conveyorBuildings)
 		spriteBatch->draw(b.first->texInfo, blib::math::easyMatrix(glm::vec2(b.second, 1080 - 128+32)));
 
 
@@ -630,7 +683,7 @@ void Sieged::draw()
 
 void Sieged::calcPaths()
 {
-	if (buildings.empty())
+	if (!blib::linq::contains(buildings, [](Building* b){ return b->buildingTemplate->type == BuildingTemplate::TownHall; }))
 		return;
 	double beginTime = blib::util::Profiler::getAppTime();
 
@@ -639,9 +692,12 @@ void Sieged::calcPaths()
 		double beginTime_ = blib::util::Profiler::getAppTime();
 		std::vector<std::vector<float>> costs(100, std::vector<float>(100, 9999999));
 		std::list<glm::ivec2> queue;
-		for (int x = 0; x < buildings[0]->buildingTemplate->size.x; x++)
-			for (int y = 0; y < buildings[0]->buildingTemplate->size.y; y++)
-				queue.push_back(buildings[0]->position + glm::ivec2(x, y));
+
+		Building* targetBuilding = blib::linq::firstOrDefault<Building*>(buildings, [](Building* b){ return b->buildingTemplate->type == BuildingTemplate::TownHall; }, nullptr);
+
+		for (int x = 0; x < targetBuilding->buildingTemplate->size.x; x++)
+			for (int y = 0; y < targetBuilding->buildingTemplate->size.y; y++)
+				queue.push_back(targetBuilding->position + glm::ivec2(x, y));
 
 		for (auto p : queue)
 			costs[p.x][p.y] = 0;
@@ -910,4 +966,8 @@ BuildingTemplate::BuildingTemplate(const blib::json::Value &data, blib::TextureM
 	this->texInfo = textureMap->addTexture(data["beltthumb"]);
 	this->model = model;
 	this->buildTime = data["constructiontime"];
+
+	this->rngWeight = -1;
+	if (data.isMember("rng"))
+		rngWeight = data["rng"];
 }

@@ -42,6 +42,7 @@ public:
 	blib::TextureMap::TexInfo* texInfo;
 	blib::StaticModel* model;
 
+	int rngWeight;
 	float buildTime;
 
 	BuildingTemplate(const blib::json::Value &data, blib::TextureMap* textureMap, blib::StaticModel* model);
@@ -95,7 +96,7 @@ class Sieged : public blib::App
 	std::map<BuildingTemplate::Type, BuildingTemplate*> buildingTemplates;
 	std::vector<Building*> buildings;
 	std::vector<Enemy*> enemies;
-	std::vector<std::pair<BuildingTemplate*, float> > conveyerBuildings;
+	std::vector<std::pair<BuildingTemplate*, float> > conveyorBuildings;
 	std::vector<blib::math::Polygon> collisionWalls;
 
 	std::vector<std::tuple<glm::mat4, Building*, blib::StaticModel*> > wallCache;
@@ -112,7 +113,7 @@ class Sieged : public blib::App
 	blib::StaticModel* wallModels[6];
 
 	BuildingTemplate* draggingBuilding;
-	int conveyerDragIndex;
+	int conveyorDragIndex;
 
 	TileMap tiles;
 	struct
@@ -126,8 +127,17 @@ class Sieged : public blib::App
 	float cameraRotation;
 	float cameraAngle;
 
-	const float conveyerSpeed = 50;
+	const float conveyorSpeed = 50;
 	float conveyorOffset;
+	int rngTotalWeight;
+	float conveyorBuildingsPerSecond;
+	float lastConveyorBuilding = 0;
+
+
+	
+	float stoneMasonFactor = 1;
+	float wallBuildSpeed = 1;
+
 
 
 	enum class BuildMode

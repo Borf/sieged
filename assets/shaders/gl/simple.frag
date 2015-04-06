@@ -180,6 +180,7 @@ void main()
 
 
 	float n = clamp(abs(cellular(texcoord + location)), 0, 1);
+	//float n = clamp(abs(snoise(vec3(texcoord,0.0))), 0.0, 1.0);
 	if(n > buildFactor)
 		discard;//color.rgb = vec3(0,0,0);
 

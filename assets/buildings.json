@@ -8,7 +8,7 @@
 		"cost" : 50,
 		"hitpoints": 1000, 
 		"aggro" : 1,
-		"constructiontime" : 3,
+        "constructiontime": 3,
 	},
 	{
 		"id" :  1,
@@ -19,7 +19,7 @@
 		"cost" : 200,
 		"hitpoints": 2000, 
 		"aggro" : 2,
-		"constructiontime" : 5,
+		"constructiontime" : 5
 	},
 	{
 		"id" :  2,
@@ -30,7 +30,7 @@
 		"cost" : 0,
 		"hitpoints" : 2500, 
 		"aggro" : 5,
-		"constructiontime" : 15,
+		"constructiontime" : 15
 	},
 	{
 		"id" :  3,
@@ -42,8 +42,9 @@
 		"hitpoints" : 300, 
 		"aggro" : 2,
 		"constructiontime" : 5,
+        "rng" :  1
 	},
-		{
+	{
 		"id" :  4,
 		"name" :  "Bank",
 		"beltthumb" :  "assets/textures/buildings/Bank.png",
@@ -53,6 +54,7 @@
 		"hitpoints" : 400, 
 		"aggro" : 3,
 		"constructiontime" : 8,
+        "rng" :  1
 	},
 	{
 		"id" :  5,
@@ -63,7 +65,8 @@
 		"cost" : 300,
 		"hitpoints" : 200, 
 		"aggro" : 3,
-		"constructiontime" : 8,
+        "constructiontime": 8,
+        "rng" :  1
 	},
 	{
 		"id" :  6,
@@ -74,7 +77,7 @@
 		"cost" : 500,
 		"hitpoints" : 250, 
 		"aggro" : 3,
-		"constructiontime" : 10,
+		"constructiontime" : 10
 	},
 	{
 		"id" :  7,
@@ -85,7 +88,7 @@
 		"cost" : 400,
 		"hitpoints" : 400, 
 		"aggro" : 4,
-		"constructiontime" : 10,
+		"constructiontime" : 10
 	},
 	{
 		"id" :  8,
@@ -96,7 +99,7 @@
 		"cost" : 300,
 		"hitpoints" : 200, 
 		"aggro" : 4,
-		"constructiontime" : 8,
+		"constructiontime" : 8
 	},
 	{
 		"id" :  9,
@@ -107,7 +110,7 @@
 		"cost" : 200,
 		"hitpoints" : 400, 
 		"aggro" : 4,
-		"constructiontime" : 8,
+		"constructiontime" : 8
 	},
 	{
 		"id" :  10,
@@ -118,7 +121,7 @@
 		"cost" : 300,
 		"hitpoints" : 1000, 
 		"aggro" : 4,
-		"constructiontime" : 15,
+		"constructiontime" : 15
 	},
 	{
 		"id" :  11,
@@ -129,7 +132,7 @@
 		"cost" : 250,
 		"hitpoints" : 750, 
 		"aggro" : 6,
-		"constructiontime" : 10,
+		"constructiontime" : 10
 	},
 		{
 		"id" :  12,
@@ -140,7 +143,7 @@
 		"cost" : 500,
 		"hitpoints" : 300, 
 		"aggro" : 4,
-		"constructiontime" : 15, 
+		"constructiontime" : 15
 	},
 	{
 		"id" :  13,
@@ -151,7 +154,7 @@
 		"cost" : 400,
 		"hitpoints" : 400, 
 		"aggro" : 3,
-		"constructiontime" : 10,
+		"constructiontime" : 10
 	},
 	{
 		"id" :  14,
