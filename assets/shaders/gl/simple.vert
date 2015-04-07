@@ -15,18 +15,18 @@ uniform mat4 shadowProjectionMatrix;
 varying vec2 texcoord;
 varying vec3 normal;
 varying vec3 pos;
-varying vec3 shadowPos;
+varying vec4 shadowPos;
 varying vec3 LightDirection_cameraspace;
 
-
-void main()
-{
 mat4 biasMatrix = mat4(
 0.5, 0.0, 0.0, 0.0,
 0.0, 0.5, 0.0, 0.0,
 0.0, 0.0, 0.5, 0.0,
 0.5, 0.5, 0.5, 1.0
 );
+
+void main()
+{
 
 	texcoord = a_texcoord;
 
@@ -39,6 +39,6 @@ mat4 biasMatrix = mat4(
 
 	pos = vec3(modelMatrix * vec4(a_position,1));
 
-	shadowPos = vec3(biasMatrix * shadowProjectionMatrix * shadowCameraMatrix * modelMatrix * vec4(a_position, 1));
+	shadowPos = biasMatrix * shadowProjectionMatrix * shadowCameraMatrix * modelMatrix * vec4(a_position, 1);
 	gl_Position = projectionMatrix * cameraMatrix * modelMatrix * vec4(a_position,1);
 }

@@ -86,6 +86,8 @@ void Sieged::init()
 		wallModels[i]->meshes[0]->material.texture = resourceManager->getResource<blib::Texture>("assets/models/wall"+std::to_string(i+1)+".png");
 	}
 
+	enemyModel = new blib::StaticModel("assets/models/cube.fbx.json", resourceManager, renderer);
+
 
 	buttons.wall = new blib::AnimatableSprite(resourceManager->getResource<blib::Texture>("assets/textures/hud/btnWall.png"), blib::math::Rectangle(glm::vec2(16, 200), 48, 48));
 	buttons.market = new blib::AnimatableSprite(resourceManager->getResource<blib::Texture>("assets/textures/hud/btnMarket.png"), blib::math::Rectangle(glm::vec2(16, 248), 48, 48));
@@ -140,7 +142,7 @@ void Sieged::init()
 	}
 
 	shadowMap = resourceManager->getResource<blib::FBO>();
-	shadowMap->setSize(4048, 4048);
+	shadowMap->setSize(4048*2, 4048*2);
 	shadowMap->depth = false;
 	shadowMap->depthTexture = true;
 	shadowMap->stencil = false;
@@ -166,12 +168,12 @@ void Sieged::init()
 	backgroundShader->setUniform(Uniforms::s_texture, 0);
 	backgroundShader->setUniform(Uniforms::s_shadowmap, 1);
 
-	/*shadowmapShader = resourceManager->getResource<blib::Shader>("shadowmap");
+	shadowmapShader = resourceManager->getResource<blib::Shader>("shadowmap");
 	shadowmapShader->bindAttributeLocation("a_position", 0);
 	shadowmapShader->setUniformName(Uniforms::projectionMatrix, "projectionMatrix", blib::Shader::UniformType::Mat4);
 	shadowmapShader->setUniformName(Uniforms::cameraMatrix, "cameraMatrix", blib::Shader::UniformType::Mat4);
 	shadowmapShader->setUniformName(Uniforms::modelMatrix, "modelMatrix", blib::Shader::UniformType::Mat4);
-	shadowmapShader->finishUniformSetup();*/
+	shadowmapShader->finishUniformSetup();
 
 
 	renderState.depthTest = true;
@@ -510,11 +512,12 @@ void Sieged::draw()
 	cameraMatrix = glm::translate(cameraMatrix, -cameraCenter);
 
 
-	float fac = 1.0f;
-	glm::mat4 shadowProjectionMatrix = glm::ortho<float>(-fac * cameraDistance, fac * cameraDistance, -fac * cameraDistance, fac * cameraDistance, -50, 50);
-	glm::mat4 shadowCameraMatrix = glm::lookAt(glm::vec3(0.5f, 2, 2) + cameraCenter, glm::vec3(0, 0, 0) + cameraCenter, glm::vec3(0, 1, 0));
+	float fac = 60.0f;
+	glm::mat4 shadowProjectionMatrix = glm::ortho<float>(-fac, fac, -fac, fac, -50, 75);
+	glm::mat4 shadowCameraMatrix = glm::lookAt(glm::vec3(0.5f, 2, 2) + glm::vec3(50,0,50), glm::vec3(50, 0, 50), glm::vec3(0, 1, 0));
 
-	renderState.activeShader = backgroundShader;// shadowmapShader;
+	renderState.cullFaces = blib::RenderState::CullFaces::CW;
+	renderState.activeShader = shadowmapShader;
 	renderState.activeShader->setUniform(Uniforms::cameraMatrix, shadowCameraMatrix);
 	renderState.activeShader->setUniform(Uniforms::projectionMatrix, shadowProjectionMatrix);
 
@@ -528,6 +531,7 @@ void Sieged::draw()
 	renderer->clear(glm::vec4(0.5f, 0.5f, 0.5f, 1), blib::Renderer::Color | blib::Renderer::Depth, renderState);
 
 
+	renderState.cullFaces = blib::RenderState::CullFaces::CCW;
 	renderState.activeTexture[1] = shadowMap;
 	renderState.activeShader = backgroundShader;
 	renderState.activeShader->setUniform(Uniforms::shadowCameraMatrix, shadowCameraMatrix);
@@ -541,7 +545,7 @@ void Sieged::draw()
 
 	spriteBatch->begin();
 
-	spriteBatch->draw(shadowMap, blib::math::easyMatrix(glm::vec2(250,224), 0, glm::vec2(0.05f, -0.05f)));
+	//spriteBatch->draw(shadowMap, blib::math::easyMatrix(glm::vec2(250,224), 0, glm::vec2(0.05f, -0.05f)));
 
 	for (int i = -128; i < 1920+128; i+=128)
 		spriteBatch->draw(conveyorTexture, blib::math::easyMatrix(glm::vec2(-conveyorOffset + i, 1080 - 128)));
@@ -569,9 +573,9 @@ void Sieged::draw()
 void Sieged::drawWorld(RenderPass renderPass)
 {
 	std::vector<blib::VertexP3T2N3> verts;
-	verts.push_back(blib::VertexP3T2N3(glm::vec3(0, 0, 0), glm::vec2(0, 0), glm::vec3(0, 1, 0)));
-	verts.push_back(blib::VertexP3T2N3(glm::vec3(100, 0, 0), glm::vec2(100 / 8.0f, 0), glm::vec3(0, 1, 0)));
 	verts.push_back(blib::VertexP3T2N3(glm::vec3(0, 0, 100), glm::vec2(0, 100 / 8.0f), glm::vec3(0, 1, 0)));
+	verts.push_back(blib::VertexP3T2N3(glm::vec3(100, 0, 0), glm::vec2(100 / 8.0f, 0), glm::vec3(0, 1, 0)));
+	verts.push_back(blib::VertexP3T2N3(glm::vec3(0, 0, 0), glm::vec2(0, 0), glm::vec3(0, 1, 0)));
 
 	verts.push_back(blib::VertexP3T2N3(glm::vec3(100, 0, 100), glm::vec2(100 / 8.0f, 100 / 8.0f), glm::vec3(0, 1, 0)));
 	verts.push_back(blib::VertexP3T2N3(glm::vec3(100, 0, 0), glm::vec2(100 / 8.0f, 0), glm::vec3(0, 1, 0)));
@@ -593,11 +597,12 @@ void Sieged::drawWorld(RenderPass renderPass)
 	for (auto e : enemies)
 	{
 		glm::mat4 mat;
-		mat = glm::translate(mat, glm::vec3(e->position.x, 0.5f, e->position.y));
-		mat = glm::scale(mat, glm::vec3(0.1f, 2, 0.1f));
+		mat = glm::translate(mat, glm::vec3(e->position.x, 1.0f, e->position.y));
+		mat = glm::scale(mat, glm::vec3(0.15f, 2, 0.15f));
 		renderState.activeShader->setUniform(Uniforms::modelMatrix, mat);
-		renderState.activeShader->setUniform(Uniforms::colorMult, glm::vec4(1, 0, 0, 1));
-		renderer->drawTriangles(cube, renderState);
+		renderState.activeShader->setUniform(Uniforms::colorMult, glm::vec4(1, 1, 1, 1));
+		//renderer->drawTriangles(cube, renderState);
+		enemyModel->draw(renderState, renderer, -1);
 	}
 
 

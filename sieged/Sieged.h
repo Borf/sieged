@@ -100,6 +100,7 @@ class Sieged : public blib::App
 	std::vector<blib::math::Polygon> collisionWalls;
 
 	std::vector<std::tuple<glm::mat4, Building*, blib::StaticModel*> > wallCache;
+	blib::StaticModel* enemyModel;
 
 	blib::Font* font;
 	blib::Texture* gridTexture;
