@@ -42,8 +42,11 @@ public:
 	blib::TextureMap::TexInfo* texInfo;
 	blib::StaticModel* model;
 
+	int cost;
 	int rngWeight;
 	float buildTime;
+	int hitpoints;
+	float healthbarSize;
 
 	BuildingTemplate(const blib::json::Value &data, blib::TextureMap* textureMap, blib::StaticModel* model);
 };
@@ -54,6 +57,7 @@ public:
 	glm::ivec2 position;
 	BuildingTemplate* buildingTemplate;
 	float buildTimeLeft;
+	int damage;
 
 	Building(const glm::ivec2 position, BuildingTemplate* buildingTemplate, TileMap& tilemap);
 };
@@ -103,12 +107,18 @@ class Sieged : public blib::App
 	blib::StaticModel* enemyModel;
 
 	blib::Font* font;
+	blib::Font* font48;
 	blib::Texture* gridTexture;
+	blib::Texture* whitePixel;
 	blib::Texture* tileTexture;
 	blib::Texture* arrowsTexture;
 	blib::Texture* enemyTexture;
 	blib::Texture* conveyorTexture;
+	blib::Texture* notEnoughGoldTexture;
 	blib::TextureMap* conveyorBuildingTextureMap;
+
+	std::vector<blib::AnimatableSprite*> effects;
+
 
 
 	blib::FBO* shadowMap;
@@ -135,11 +145,19 @@ class Sieged : public blib::App
 	int rngTotalWeight;
 	float conveyorBuildingsPerSecond;
 	float lastConveyorBuilding = 0;
+	float goldTimeLeft = 0;
 
 
 	
 	float stoneMasonFactor = 1;
 	float wallBuildSpeed = 1;
+	float lightDirection = 0;
+
+
+	int gold;
+
+
+
 
 
 
@@ -161,21 +179,22 @@ class Sieged : public blib::App
 
 	enum class Uniforms
 	{
-		projectionMatrix,
-		cameraMatrix,
+		ProjectionMatrix,
+		CameraMatrix,
 		modelMatrix,
 		colorMult,
 		s_texture,
 		s_shadowmap,
 		buildFactor,
 		location,
+		shadowFac,
 
 		shadowProjectionMatrix,
 		shadowCameraMatrix,
+		lightDirection,
 	};
 	glm::mat4 cameraMatrix;
 	glm::mat4 projectionMatrix;
-
 public:
 	Sieged();
 	virtual void init() override;

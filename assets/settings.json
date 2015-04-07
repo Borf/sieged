@@ -1,5 +1,10 @@
 {
     "conveyerspeed": 50,
-    "blueprintspersecond": 1,
-    "stonemasonfactor" :  1,
+    "blueprintspersecond": 0.5,
+    "stonemasonfactor": 1,
+
+    "start": 
+    {
+        "gold": 1000
+    }
 }

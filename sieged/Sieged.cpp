@@ -44,6 +44,7 @@ Sieged::Sieged()
 
 void Sieged::init()
 {
+	whitePixel = resourceManager->getResource<blib::Texture>("assets/textures/whitePixel.png");
 	gridTexture = resourceManager->getResource<blib::Texture>("assets/textures/grid.png");
 	enemyTexture = resourceManager->getResource<blib::Texture>("assets/textures/enemy.png");
 	arrowsTexture = resourceManager->getResource<blib::Texture>("assets/textures/arrows.png");
@@ -51,12 +52,17 @@ void Sieged::init()
 	conveyorTexture->setTextureRepeat(true);
 	gridTexture->setTextureRepeat(true);
 	font = resourceManager->getResource<blib::Font>("tahoma");
+	font48 = resourceManager->getResource<blib::Font>("main48");
 	conveyorBuildingTextureMap = resourceManager->getResource<blib::TextureMap>();
-	
+
+	notEnoughGoldTexture = resourceManager->getResource<blib::Texture>("assets/textures/notenoughgold.png");
+
+
 
 	blib::json::Value settings = blib::util::FileSystem::getJson("assets/settings.json");
 	conveyorBuildingsPerSecond = settings["blueprintspersecond"];
 	stoneMasonFactor = settings["stonemasonfactor"];
+	gold = settings["start"]["gold"];
 
 	
 	blib::json::Value buildingDb = blib::util::FileSystem::getJson("assets/buildings.json");
@@ -154,8 +160,8 @@ void Sieged::init()
 	backgroundShader->bindAttributeLocation("a_position", 0);
 	backgroundShader->bindAttributeLocation("a_texcoord", 1);
 	backgroundShader->bindAttributeLocation("a_normal", 2);
-	backgroundShader->setUniformName(Uniforms::projectionMatrix, "projectionMatrix", blib::Shader::UniformType::Mat4);
-	backgroundShader->setUniformName(Uniforms::cameraMatrix, "cameraMatrix", blib::Shader::UniformType::Mat4);
+	backgroundShader->setUniformName(Uniforms::ProjectionMatrix, "projectionMatrix", blib::Shader::UniformType::Mat4);
+	backgroundShader->setUniformName(Uniforms::CameraMatrix, "cameraMatrix", blib::Shader::UniformType::Mat4);
 	backgroundShader->setUniformName(Uniforms::modelMatrix, "modelMatrix", blib::Shader::UniformType::Mat4);
 	backgroundShader->setUniformName(Uniforms::colorMult, "colorMult", blib::Shader::UniformType::Vec4);
 	backgroundShader->setUniformName(Uniforms::s_texture, "s_texture", blib::Shader::UniformType::Int);
@@ -164,15 +170,21 @@ void Sieged::init()
 	backgroundShader->setUniformName(Uniforms::location, "location", blib::Shader::UniformType::Vec2);
 	backgroundShader->setUniformName(Uniforms::shadowProjectionMatrix, "shadowProjectionMatrix", blib::Shader::UniformType::Mat4);
 	backgroundShader->setUniformName(Uniforms::shadowCameraMatrix, "shadowCameraMatrix", blib::Shader::UniformType::Mat4);
+	backgroundShader->setUniformName(Uniforms::lightDirection, "lightDirection", blib::Shader::UniformType::Vec3);
+	backgroundShader->setUniformName(Uniforms::shadowFac, "shadowFac", blib::Shader::UniformType::Float);
+	
 	backgroundShader->finishUniformSetup();
 	backgroundShader->setUniform(Uniforms::s_texture, 0);
 	backgroundShader->setUniform(Uniforms::s_shadowmap, 1);
 
 	shadowmapShader = resourceManager->getResource<blib::Shader>("shadowmap");
 	shadowmapShader->bindAttributeLocation("a_position", 0);
-	shadowmapShader->setUniformName(Uniforms::projectionMatrix, "projectionMatrix", blib::Shader::UniformType::Mat4);
-	shadowmapShader->setUniformName(Uniforms::cameraMatrix, "cameraMatrix", blib::Shader::UniformType::Mat4);
+	shadowmapShader->bindAttributeLocation("a_texcoord", 1);
+	shadowmapShader->setUniformName(Uniforms::ProjectionMatrix, "projectionMatrix", blib::Shader::UniformType::Mat4);
+	shadowmapShader->setUniformName(Uniforms::CameraMatrix, "cameraMatrix", blib::Shader::UniformType::Mat4);
 	shadowmapShader->setUniformName(Uniforms::modelMatrix, "modelMatrix", blib::Shader::UniformType::Mat4);
+	shadowmapShader->setUniformName(Uniforms::buildFactor, "buildFactor", blib::Shader::UniformType::Float);
+	shadowmapShader->setUniformName(Uniforms::location, "location", blib::Shader::UniformType::Vec2);
 	shadowmapShader->finishUniformSetup();
 
 
@@ -203,6 +215,7 @@ void Sieged::update(double elapsedTime)
 {
 	if (elapsedTime > 0.1)
 		elapsedTime = 0.1;
+
 	if (keyState.isPressed(blib::Key::ESC))
 	{
 		running = false;
@@ -375,9 +388,20 @@ void Sieged::update(double elapsedTime)
 					for (int y = 0; y < draggingBuilding->size.y; y++)
 						if (tiles[pos.x + x][pos.y + y]->building)
 							ok = false;
+				
+				if (ok && gold < draggingBuilding->cost)
+				{
+					blib::AnimatableSprite* e = new blib::AnimatableSprite(notEnoughGoldTexture, glm::vec2(mouseState.position) - notEnoughGoldTexture->center);
+					e->resizeTo(glm::vec2(2,2), 1);
+					e->alphaTo(0, 1);
+					effects.push_back(e);
+					//ok = !ok;
+				}
+
 
 				if (ok)
 				{
+					gold -= draggingBuilding->cost;
 					buildings.push_back(new Building(pos, draggingBuilding, tiles));
 					conveyorBuildings.erase(conveyorBuildings.begin() + conveyorDragIndex);
 					calcPaths();
@@ -446,6 +470,25 @@ void Sieged::update(double elapsedTime)
 		}
 	}
 
+	for (int i = 0; i < (int)effects.size(); i++)
+	{
+		effects[i]->update((float)elapsedTime);
+		if (effects[i]->animations.empty())
+		{
+			delete effects[i];
+			effects.erase(effects.begin() + i);
+			i--;
+		}
+	}
+
+	goldTimeLeft -= elapsedTime;
+	while (goldTimeLeft < 0)
+	{
+		goldTimeLeft += 1;
+		gold += (blib::linq::count(buildings, [](Building* b) { return b->buildingTemplate->type == BuildingTemplate::MineralMine; })) * 5;
+		gold *=  1 + (blib::linq::count(buildings, [](Building* b) { return b->buildingTemplate->type == BuildingTemplate::Bank; })) * 0.005;
+
+	}
 
 
 	for (auto b : buildings)
@@ -477,6 +520,8 @@ void Sieged::update(double elapsedTime)
 		}
 	}
 
+
+	lightDirection += elapsedTime * 0.001f;
 
 	buttons.wall->update(elapsedTime);
 	buttons.market->update(elapsedTime);
@@ -512,14 +557,16 @@ void Sieged::draw()
 	cameraMatrix = glm::translate(cameraMatrix, -cameraCenter);
 
 
+	glm::vec3 lightAngle(cos(lightDirection) * 3, 2, sin(lightDirection) * 3);
+
 	float fac = 60.0f;
 	glm::mat4 shadowProjectionMatrix = glm::ortho<float>(-fac, fac, -fac, fac, -50, 75);
-	glm::mat4 shadowCameraMatrix = glm::lookAt(glm::vec3(0.5f, 2, 2) + glm::vec3(50,0,50), glm::vec3(50, 0, 50), glm::vec3(0, 1, 0));
+	glm::mat4 shadowCameraMatrix = glm::lookAt(lightAngle + glm::vec3(50,0,50), glm::vec3(50, 0, 50), glm::vec3(0, 1, 0));
 
 	renderState.cullFaces = blib::RenderState::CullFaces::CW;
 	renderState.activeShader = shadowmapShader;
-	renderState.activeShader->setUniform(Uniforms::cameraMatrix, shadowCameraMatrix);
-	renderState.activeShader->setUniform(Uniforms::projectionMatrix, shadowProjectionMatrix);
+	renderState.activeShader->setUniform(Uniforms::CameraMatrix, shadowCameraMatrix);
+	renderState.activeShader->setUniform(Uniforms::ProjectionMatrix, shadowProjectionMatrix);
 
 	renderState.activeFbo = shadowMap;
 	renderer->setViewPort(0, 0, shadowMap->width, shadowMap->height);
@@ -537,13 +584,37 @@ void Sieged::draw()
 	renderState.activeShader->setUniform(Uniforms::shadowCameraMatrix, shadowCameraMatrix);
 	renderState.activeShader->setUniform(Uniforms::shadowProjectionMatrix, shadowProjectionMatrix);
 
-	renderState.activeShader->setUniform(Uniforms::cameraMatrix, cameraMatrix);
-	renderState.activeShader->setUniform(Uniforms::projectionMatrix, projectionMatrix);
+	renderState.activeShader->setUniform(Uniforms::CameraMatrix, cameraMatrix);
+	renderState.activeShader->setUniform(Uniforms::ProjectionMatrix, projectionMatrix);
 	drawWorld(RenderPass::Final);
 
 
 
 	spriteBatch->begin();
+
+
+	for (auto b : buildings)
+	{
+		if (b->damage == 0 && b->buildTimeLeft == 0)
+			continue;
+
+		glm::vec3 position = glm::project(glm::vec3(b->position.x + b->buildingTemplate->size.x / 2.0f, 4, b->position.y + b->buildingTemplate->size.y / 2.0f), cameraMatrix, projectionMatrix, glm::uvec4(0, 0, 1920, 1079));
+				
+		float barWidth = b->buildingTemplate->healthbarSize / cameraDistance;
+		float barHeight = glm::max(300 / cameraDistance, 4.0f);
+
+		float borderSize = glm::round(glm::min(4.0f, 30 / cameraDistance));
+
+		float buildFactor = 1.0f-glm::min(1.0f, b->buildTimeLeft / b->buildingTemplate->buildTime);
+		float health = (b->buildingTemplate->hitpoints - b->damage) / b->buildingTemplate->hitpoints * buildFactor;
+		float healthBarWidth = (barWidth - 2 * borderSize) * health;
+	
+		glm::vec4 color = glm::mix(blib::Color::reddish, blib::Color::limeGreen, health);
+
+		spriteBatch->draw(whitePixel, blib::math::easyMatrix(glm::vec2(position.x - barWidth / 2, 1079 - position.y), 0, glm::vec2(barWidth, barHeight)));
+		spriteBatch->draw(whitePixel, blib::math::easyMatrix(glm::vec2(position.x - barWidth / 2 + borderSize, 1079 - position.y + borderSize), 0, glm::vec2(healthBarWidth, barHeight - 2 * borderSize)), color);
+	}
+
 
 	//spriteBatch->draw(shadowMap, blib::math::easyMatrix(glm::vec2(250,224), 0, glm::vec2(0.05f, -0.05f)));
 
@@ -552,6 +623,9 @@ void Sieged::draw()
 
 	for (auto b : conveyorBuildings)
 		spriteBatch->draw(b.first->texInfo, blib::math::easyMatrix(glm::vec2(b.second, 1080 - 128+32)));
+
+	for (auto e : effects)
+		e->draw(spriteBatch);
 
 
 	buttons.wall->draw(spriteBatch);
@@ -562,6 +636,9 @@ void Sieged::draw()
 
 	spriteBatch->draw(font, "Mouse: " + std::to_string(mousePos3d.x) + ", " + std::to_string(mousePos3d.y) + ", " + std::to_string(mousePos3d.z), blib::math::easyMatrix(glm::vec2(1, 141)), blib::Color::black);
 	spriteBatch->draw(font, "Mouse: " + std::to_string(mousePos3d.x) + ", " + std::to_string(mousePos3d.y) + ", " + std::to_string(mousePos3d.z), blib::math::easyMatrix(glm::vec2(0, 140)));
+
+
+	spriteBatch->draw(font48, "Gold: " + std::to_string(gold), blib::math::easyMatrix(glm::vec2(1920 - 10 - font48->textlen("Gold: " + std::to_string(gold)), 5)));
 
 	spriteBatch->end();
 
@@ -584,6 +661,7 @@ void Sieged::drawWorld(RenderPass renderPass)
 	renderState.activeShader->setUniform(Uniforms::modelMatrix, glm::mat4());
 	renderState.activeShader->setUniform(Uniforms::colorMult, glm::vec4(1, 1, 1, 1));
 	renderState.activeShader->setUniform(Uniforms::buildFactor, 1.0f);
+	renderState.activeShader->setUniform(Uniforms::shadowFac, 1.0f);
 	renderState.activeTexture[0] = gridTexture;
 	renderer->drawTriangles(verts, renderState);
 
@@ -592,6 +670,7 @@ void Sieged::drawWorld(RenderPass renderPass)
 		renderer->unproject(glm::vec2(mouseState.position), &mousePos3d, NULL, cameraMatrix, projectionMatrix);
 
 
+	renderState.activeShader->setUniform(Uniforms::shadowFac, 0.0f);
 
 
 	for (auto e : enemies)
@@ -1001,6 +1080,7 @@ Building::Building(const glm::ivec2 position, BuildingTemplate* buildingTemplate
 		for (int y = 0; y < buildingTemplate->size.y; y++)
 			tilemap[position.x + x][position.y + y]->building = this;
 	this->buildTimeLeft = buildingTemplate->buildTime;
+	this->damage = 0;
 }
 
 BuildingTemplate::BuildingTemplate(const blib::json::Value &data, blib::TextureMap* textureMap, blib::StaticModel* model)
@@ -1014,4 +1094,10 @@ BuildingTemplate::BuildingTemplate(const blib::json::Value &data, blib::TextureM
 	this->rngWeight = -1;
 	if (data.isMember("rng"))
 		rngWeight = data["rng"];
+	cost = data["cost"];
+	hitpoints = data["hitpoints"];
+
+	healthbarSize = 7000;
+	if (data.isMember("healthbarsize"))
+		healthbarSize = data["healthbarsize"];
 }

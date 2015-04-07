@@ -10,7 +10,7 @@ uniform mat4 modelMatrix;
 
 uniform mat4 shadowCameraMatrix;
 uniform mat4 shadowProjectionMatrix;
-
+uniform vec3 lightDirection;
 
 varying vec2 texcoord;
 varying vec3 normal;
@@ -35,7 +35,7 @@ void main()
 	normal = normalMatrix * a_normal;
 
 
-	LightDirection_cameraspace = (cameraMatrix * vec4(0.5, 2.0, 2.0,0)).xyz;
+	LightDirection_cameraspace = (cameraMatrix * vec4(lightDirection,0)).xyz;
 
 	pos = vec3(modelMatrix * vec4(a_position,1));
 

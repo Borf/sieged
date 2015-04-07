@@ -9,6 +9,7 @@
 		"hitpoints": 1000, 
 		"aggro" : 1,
         "constructiontime": 3,
+        "healthbarsize" :  1000
 	},
 	{
 		"id" :  1,
