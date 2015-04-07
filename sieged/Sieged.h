@@ -92,7 +92,11 @@ public:
 	glm::vec2 position;
 	float speed;
 
-	Enemy(glm::vec2 p) { this->position = p; this->speed = blib::math::randomFloat(0.25f, 1.5f); }
+
+	float timeLeftForAttack;
+	int health;
+
+	Enemy(glm::vec2 p) { this->position = p; this->speed = blib::math::randomFloat(0.25f, 1.5f); timeLeftForAttack = 0; health = 5; }
 };
 
 class Sieged : public blib::App
@@ -146,6 +150,13 @@ class Sieged : public blib::App
 	float conveyorBuildingsPerSecond;
 	float lastConveyorBuilding = 0;
 	float goldTimeLeft = 0;
+
+	bool gamePlaying = false;
+
+	float threatLevel;
+	float speed = 1;
+
+	float nextEnemySpawn = 0;
 
 
 	

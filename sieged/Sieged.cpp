@@ -112,13 +112,15 @@ void Sieged::init()
 	calcPaths();
 	calcWalls();
 
-	while (enemies.size() < 10)
+/*	while (enemies.size() < 10)
 	{
 		glm::vec2 pos(blib::math::randomFloat(0, 32), blib::math::randomFloat(0, 20));
 		if (tiles[(int)(pos.x)][(int)(pos.y)]->building)
 			continue;
 		enemies.push_back(new Enemy(pos));
-	}
+	}*/
+
+
 
 	for (float i = -0.5f; i <= 0.5f; i += 1)
 	{
@@ -205,10 +207,11 @@ void Sieged::init()
 	conveyorBuildings.push_back(std::pair<BuildingTemplate*, float>(buildingTemplates[BuildingTemplate::TownHall], 1920.0f));
 
 
-	cameraCenter = glm::vec3(16, 0, 15);
+	cameraCenter = glm::vec3(50, 0, 50);
 	cameraAngle = 70;
 	cameraDistance = 30;
 	cameraRotation = 0;
+	threatLevel = 0;
 }
 
 void Sieged::update(double elapsedTime)
@@ -216,11 +219,29 @@ void Sieged::update(double elapsedTime)
 	if (elapsedTime > 0.1)
 		elapsedTime = 0.1;
 
+	elapsedTime *= speed;
+
 	if (keyState.isPressed(blib::Key::ESC))
 	{
 		running = false;
 		return;
 	}
+
+	if (keyState.isPressed(blib::Key::_1))
+		speed = 1;
+	if (keyState.isPressed(blib::Key::_2))
+		speed = 2;
+	if (keyState.isPressed(blib::Key::_3))
+		speed = 3;
+	if (keyState.isPressed(blib::Key::_4))
+		speed = 4;
+	if (keyState.isPressed(blib::Key::_5))
+		speed = 5;
+	if (keyState.isPressed(blib::Key::_6))
+		speed = 8;
+	if (keyState.isPressed(blib::Key::_7))
+		speed = 10;
+
 
 	cameraDistance -= (mouseState.scrollPosition - prevMouseState.scrollPosition) / 100.0f;
 	cameraDistance = glm::clamp(cameraDistance, 5.0f, 100.0f);
@@ -242,90 +263,6 @@ void Sieged::update(double elapsedTime)
 	}
 
 
-	for (Enemy* e : enemies)
-	{
-		glm::ivec2 tile = glm::ivec2(e->position);
-		if (tile.x < 0 || tile.y < 0)
-			continue;
-		int direction = tiles[tile.x][tile.y]->toBase;
-
-		glm::vec2 oldPos = e->position;
-
-		glm::vec2 tileCenter = glm::vec2(tile) + glm::vec2(0.5f, 0.5f);
-
-		if ((direction & Tile::Left) != 0)
-			e->position.x -= elapsedTime * e->speed;
-		if (tiles[(int)(e->position.x)][(int)(e->position.y)]->building)
-			e->position = oldPos;
-		oldPos = e->position;
-		if ((direction & Tile::Right) != 0)
-			e->position.x += elapsedTime * e->speed;
-		if (tiles[(int)(e->position.x)][(int)(e->position.y)]->building)
-			e->position = oldPos;
-		oldPos = e->position;
-
-		if ((direction & Tile::Left) == 0 && (direction & Tile::Right) == 0)
-			e->position.x += elapsedTime * (tileCenter.x - e->position.x) * blib::math::randomFloat(0.1f, 0.75f);
-		if (tiles[(int)(e->position.x)][(int)(e->position.y)]->building)
-			e->position = oldPos;
-		oldPos = e->position;
-
-
-		if ((direction & Tile::Down) != 0)
-			e->position.y += elapsedTime * e->speed;
-		if (tiles[(int)(e->position.x)][(int)(e->position.y)]->building)
-			e->position = oldPos;
-		oldPos = e->position;
-		if ((direction & Tile::Up) != 0)
-			e->position.y -= elapsedTime * e->speed;
-		if (tiles[(int)(e->position.x)][(int)(e->position.y)]->building)
-			e->position = oldPos;
-		oldPos = e->position;
-
-		if ((direction & Tile::Down) == 0 && (direction & Tile::Up) == 0)
-			e->position.y += elapsedTime * (tileCenter.y - e->position.y) * blib::math::randomFloat(0.1f, 0.75f);
-		if (tiles[(int)(e->position.x)][(int)(e->position.y)]->building)
-			e->position = oldPos;
-		oldPos = e->position;
-
-
-
-		if (direction == 0) // oops
-		{
-			//find nearest wall
-			glm::vec2 closestPoint;
-			for (const blib::math::Polygon &p : collisionWalls)
-			{
-				for (size_t i = 0; i < p.size(); i++)
-				{
-					int ii = (i + 1) % p.size();
-					glm::vec2 point = blib::math::Line(p[i], p[ii]).project(e->position);
-					if (glm::distance(point, e->position) < glm::distance(closestPoint, e->position))
-						closestPoint = point;
-				}
-			}
-			oldPos = e->position = closestPoint;
-		}
-
-
-		for (auto ee : enemies)
-		{
-			if (e == ee)
-				continue;
-			glm::vec2 diff = ee->position - e->position;
-			float len = glm::length(diff);
-			if (len < 0.2f && len > 0.001f)
-			{
-				diff /= len;
-				e->position += (0.2f - len) * -0.5f * diff;
-				ee->position += (0.2f - len) * 0.5f * diff;
-			}
-		}
-		if (tiles[(int)(e->position.x)][(int)(e->position.y)]->building)
-			e->position = oldPos;
-		oldPos = e->position;
-
-	}
 	
 
 
@@ -481,15 +418,208 @@ void Sieged::update(double elapsedTime)
 		}
 	}
 
-	goldTimeLeft -= elapsedTime;
-	while (goldTimeLeft < 0)
+	if (gamePlaying)
 	{
-		goldTimeLeft += 1;
-		gold += (blib::linq::count(buildings, [](Building* b) { return b->buildingTemplate->type == BuildingTemplate::MineralMine; })) * 5;
-		gold *=  1 + (blib::linq::count(buildings, [](Building* b) { return b->buildingTemplate->type == BuildingTemplate::Bank; })) * 0.005;
+		threatLevel += elapsedTime / 60.0f;
+
+		goldTimeLeft -= elapsedTime;
+		while (goldTimeLeft < 0)
+		{
+			goldTimeLeft += 1;
+			gold += (blib::linq::count(buildings, [](Building* b) { return b->buildingTemplate->type == BuildingTemplate::MineralMine; })) * 5;
+			gold *= 1 + (blib::linq::count(buildings, [](Building* b) { return b->buildingTemplate->type == BuildingTemplate::Bank; })) * 0.005;
+		}
+
+
+		nextEnemySpawn -= elapsedTime;
+		if (nextEnemySpawn < 0 && enemies.size() == 0)
+		{
+			nextEnemySpawn = 10 / (threatLevel + 1);
+
+			while (true)
+			{
+				glm::vec2 pos = glm::vec2(50,50) + 49.0f * blib::util::fromAngle(blib::math::randomFloat(0, 2 * blib::math::pif));
+				if (tiles[(int)(pos.x)][(int)(pos.y)]->building)
+					continue;
+				enemies.push_back(new Enemy(pos));
+				break;
+			}
+		}
+
+
+		for (size_t i = 0; i < enemies.size(); i++)
+		{
+			Enemy* e = enemies[i];
+			glm::ivec2 tile = glm::ivec2(e->position);
+			if (tile.x < 0 || tile.y < 0)
+				continue;
+			int direction = tiles[tile.x][tile.y]->toBase;
+
+			glm::vec2 oldPos = e->position;
+			glm::vec2 originalPos = oldPos;
+
+			glm::vec2 tileCenter = glm::vec2(tile) + glm::vec2(0.5f, 0.5f);
+
+
+			Building* attackBuilding = NULL;
+
+
+			if ((direction & Tile::Left) != 0)
+				e->position.x -= elapsedTime * e->speed;
+			if (tiles[(int)(e->position.x)][(int)(e->position.y)]->building)
+			{
+				e->position = oldPos;
+				attackBuilding = tiles[(int)(e->position.x)][(int)(e->position.y)]->building;
+			}
+			oldPos = e->position;
+			if ((direction & Tile::Right) != 0)
+				e->position.x += elapsedTime * e->speed;
+			if (tiles[(int)(e->position.x)][(int)(e->position.y)]->building)
+			{
+				e->position = oldPos;
+				attackBuilding = tiles[(int)(e->position.x)][(int)(e->position.y)]->building;
+			}
+			oldPos = e->position;
+
+			if ((direction & Tile::Left) == 0 && (direction & Tile::Right) == 0)
+				e->position.x += elapsedTime * (tileCenter.x - e->position.x) * blib::math::randomFloat(0.1f, 0.75f);
+			if (tiles[(int)(e->position.x)][(int)(e->position.y)]->building)
+			{
+				e->position = oldPos;
+				attackBuilding = tiles[(int)(e->position.x)][(int)(e->position.y)]->building;
+			}
+			oldPos = e->position;
+
+
+			if ((direction & Tile::Down) != 0)
+				e->position.y += elapsedTime * e->speed;
+			if (tiles[(int)(e->position.x)][(int)(e->position.y)]->building)
+			{
+				e->position = oldPos;
+				attackBuilding = tiles[(int)(e->position.x)][(int)(e->position.y)]->building;
+			}
+			oldPos = e->position;
+			if ((direction & Tile::Up) != 0)
+				e->position.y -= elapsedTime * e->speed;
+			if (tiles[(int)(e->position.x)][(int)(e->position.y)]->building)
+			{
+				e->position = oldPos;
+				attackBuilding = tiles[(int)(e->position.x)][(int)(e->position.y)]->building;
+			}
+			oldPos = e->position;
+
+			if ((direction & Tile::Down) == 0 && (direction & Tile::Up) == 0)
+				e->position.y += elapsedTime * (tileCenter.y - e->position.y) * blib::math::randomFloat(0.1f, 0.75f);
+			if (tiles[(int)(e->position.x)][(int)(e->position.y)]->building)
+			{
+				e->position = oldPos;
+				attackBuilding = tiles[(int)(e->position.x)][(int)(e->position.y)]->building;
+			}
+			oldPos = e->position;
+
+			
+			if (originalPos == oldPos && !attackBuilding)
+			{
+				if (tiles[(int)(e->position.x)][(int)(e->position.y)]->building)
+					attackBuilding = tiles[(int)(e->position.x)][(int)(e->position.y)]->building;
+
+				glm::vec2 closestPoint;
+				Building* closestBuilding = buildings[0];
+
+				for (auto b : buildings)
+				{
+					blib::math::Rectangle buildRect(glm::vec2(b->position), b->buildingTemplate->size.x, b->buildingTemplate->size.y);
+					glm::vec2 projection = buildRect.projectClosest(e->position);
+					
+					if (glm::distance(e->position, closestPoint) > glm::distance(e->position, projection))
+					{
+						closestBuilding = b;
+						closestPoint = projection;
+					}
+				}
+				attackBuilding = closestBuilding;
+			}
+
+
+			e->timeLeftForAttack = glm::max(0.0f, e->timeLeftForAttack - (float)elapsedTime);
+			if (attackBuilding && e->timeLeftForAttack <= 0)
+			{
+				attackBuilding->damage++;
+				e->timeLeftForAttack = 0.1f;
+				float buildFactor = 1.0f - glm::min(1.0f, attackBuilding->buildTimeLeft / attackBuilding->buildingTemplate->buildTime);
+
+				if (attackBuilding->damage >= attackBuilding->buildingTemplate->hitpoints * buildFactor)
+				{
+					Log::out << "Enemy " << i << Log::newline;
+					for (int x = 0; x < attackBuilding->buildingTemplate->size.x; x++)
+					{
+						for (int y = 0; y < attackBuilding->buildingTemplate->size.y; y++)
+						{
+							tiles[attackBuilding->position.x + x][attackBuilding->position.y + y]->building = NULL;
+						}
+					}
+
+					for (int i = 0; i < buildings.size(); i++)
+					{
+						if (buildings[i] == attackBuilding)
+						{
+							buildings.erase(buildings.begin() + i);
+							break;
+						}
+					}
+					delete attackBuilding;
+					calcPaths();
+					calcWalls();
+				}
+
+			}
+
+
+
+			if (direction == 0) // oops
+			{
+				//find nearest wall
+				glm::vec2 closestPoint;
+				for (const blib::math::Polygon &p : collisionWalls)
+				{
+					for (size_t i = 0; i < p.size(); i++)
+					{
+						int ii = (i + 1) % p.size();
+						glm::vec2 point = blib::math::Line(p[i], p[ii]).project(e->position);
+						if (glm::distance(point, e->position) < glm::distance(closestPoint, e->position))
+							closestPoint = point;
+					}
+				}
+				oldPos = e->position = closestPoint;
+			}
+
+
+			for (auto ee : enemies)
+			{
+				if (e == ee)
+					continue;
+				glm::vec2 diff = ee->position - e->position;
+				float len = glm::length(diff);
+				if (len < 0.2f && len > 0.001f)
+				{
+					diff /= len;
+					e->position += (0.2f - len) * -0.5f * diff;
+					ee->position += (0.2f - len) * 0.5f * diff;
+				}
+			}
+			if (tiles[(int)(e->position.x)][(int)(e->position.y)]->building)
+				e->position = oldPos;
+			oldPos = e->position;
+		}
+
+
+
+
+
+
+
 
 	}
-
 
 	for (auto b : buildings)
 	{
@@ -497,7 +627,10 @@ void Sieged::update(double elapsedTime)
 		{
 			b->buildTimeLeft -= elapsedTime * wallBuildSpeed;
 			if (b->buildTimeLeft < 0)
+			{
 				b->buildTimeLeft = 0;
+				calcPaths();
+			}
 			break;
 		}
 	}
@@ -508,12 +641,17 @@ void Sieged::update(double elapsedTime)
 			b->buildTimeLeft -= elapsedTime;
 			if (b->buildTimeLeft < 0)
 			{
+				calcPaths();
 				b->buildTimeLeft = 0;
-
+				//done with building
 				if (b->buildingTemplate->type == BuildingTemplate::StoneMason)
 				{
 					buttons.wall->alphaTo(1.0f, 1);
 					wallBuildSpeed = 1 + (blib::linq::count(buildings, [](Building* b) { return b->buildingTemplate->type == BuildingTemplate::StoneMason; }) - 1) * stoneMasonFactor;
+				}
+				if (b->buildingTemplate->type == BuildingTemplate::TownHall)
+				{
+					gamePlaying = true;
 				}
 			}
 			break;
@@ -593,6 +731,15 @@ void Sieged::draw()
 	spriteBatch->begin();
 
 
+	for (size_t i = 0; i < enemies.size(); i++)
+	{
+		Enemy* e = enemies[i];
+		glm::vec3 position = glm::project(glm::vec3(e->position.x, 1, e->position.y), cameraMatrix, projectionMatrix, glm::uvec4(0, 0, 1920, 1079));
+		spriteBatch->draw(font, std::to_string(i), blib::math::easyMatrix(glm::vec2(position.x, 1079 - position.y), 0, 2));
+	}
+
+
+
 	for (auto b : buildings)
 	{
 		if (b->damage == 0 && b->buildTimeLeft == 0)
@@ -606,7 +753,7 @@ void Sieged::draw()
 		float borderSize = glm::round(glm::min(4.0f, 30 / cameraDistance));
 
 		float buildFactor = 1.0f-glm::min(1.0f, b->buildTimeLeft / b->buildingTemplate->buildTime);
-		float health = (b->buildingTemplate->hitpoints - b->damage) / b->buildingTemplate->hitpoints * buildFactor;
+		float health = (b->buildingTemplate->hitpoints - b->damage) / (float)b->buildingTemplate->hitpoints * buildFactor;
 		float healthBarWidth = (barWidth - 2 * borderSize) * health;
 	
 		glm::vec4 color = glm::mix(blib::Color::reddish, blib::Color::limeGreen, health);
@@ -637,8 +784,16 @@ void Sieged::draw()
 	spriteBatch->draw(font, "Mouse: " + std::to_string(mousePos3d.x) + ", " + std::to_string(mousePos3d.y) + ", " + std::to_string(mousePos3d.z), blib::math::easyMatrix(glm::vec2(1, 141)), blib::Color::black);
 	spriteBatch->draw(font, "Mouse: " + std::to_string(mousePos3d.x) + ", " + std::to_string(mousePos3d.y) + ", " + std::to_string(mousePos3d.z), blib::math::easyMatrix(glm::vec2(0, 140)));
 
+	spriteBatch->draw(font, "Speed: " + std::to_string(speed), blib::math::easyMatrix(glm::vec2(1, 153)), blib::Color::black);
+	spriteBatch->draw(font, "Speed: " + std::to_string(speed), blib::math::easyMatrix(glm::vec2(0, 152)));
+
 
 	spriteBatch->draw(font48, "Gold: " + std::to_string(gold), blib::math::easyMatrix(glm::vec2(1920 - 10 - font48->textlen("Gold: " + std::to_string(gold)), 5)));
+
+	spriteBatch->draw(whitePixel, blib::math::easyMatrix(glm::vec2(1920 - 75, 50), 0, glm::vec2(50, 50)));
+	float threatFrac = threatLevel - (int)threatLevel;
+	spriteBatch->draw(whitePixel, blib::math::easyMatrix(glm::vec2(1920 - 75, 50), 0, glm::vec2(50 * threatFrac, 50)), blib::Color::pinkishOrange);
+	spriteBatch->draw(font48, std::to_string((int)threatLevel), blib::math::easyMatrix(glm::vec2(1920 - 60, 50)), blib::Color::black);
 
 	spriteBatch->end();
 
@@ -845,10 +1000,15 @@ void Sieged::calcPaths()
 					if (newPos.x < 0 || newPos.x >= 100 || newPos.y < 0 || newPos.y >= 100)
 						continue;
 
+					float costFac = 1;
 					if (tiles[newPos.x][newPos.y]->building)
-						continue;
+					{
+						if (tiles[newPos.x][newPos.y]->building->buildTimeLeft > 0)
+							costFac = 2;
+						costFac = 10;
+					}
 
-					float newCost = costs[pos.x][pos.y] + glm::length(glm::vec2(offset));
+					float newCost = costs[pos.x][pos.y] + glm::length(glm::vec2(offset)) * costFac;
 					if (costs[newPos.x][newPos.y] < newCost)
 						continue;
 
