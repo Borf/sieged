@@ -78,7 +78,8 @@
 		"cost" : 500,
 		"hitpoints" : 250, 
 		"aggro" : 3,
-		"constructiontime" : 10
+		"constructiontime" : 10,
+        "rng" :  1
 	},
 	{
 		"id" :  7,
@@ -89,7 +90,8 @@
 		"cost" : 400,
 		"hitpoints" : 400, 
 		"aggro" : 4,
-		"constructiontime" : 10
+		"constructiontime" : 10,
+        "rng" :  1
 	},
 	{
 		"id" :  8,
@@ -100,7 +102,8 @@
 		"cost" : 300,
 		"hitpoints" : 200, 
 		"aggro" : 4,
-		"constructiontime" : 8
+		"constructiontime" : 8,
+        "rng" :  1
 	},
 	{
 		"id" :  9,
@@ -111,7 +114,8 @@
 		"cost" : 200,
 		"hitpoints" : 400, 
 		"aggro" : 4,
-		"constructiontime" : 8
+		"constructiontime" : 8,
+        "rng" :  10
 	},
 	{
 		"id" :  10,
@@ -122,7 +126,8 @@
 		"cost" : 300,
 		"hitpoints" : 1000, 
 		"aggro" : 4,
-		"constructiontime" : 15
+		"constructiontime" : 15,
+        "rng" :  1
 	},
 	{
 		"id" :  11,
@@ -133,7 +138,8 @@
 		"cost" : 250,
 		"hitpoints" : 750, 
 		"aggro" : 6,
-		"constructiontime" : 10
+		"constructiontime" : 10,
+        "rng" :  1
 	},
 		{
 		"id" :  12,
@@ -144,7 +150,8 @@
 		"cost" : 500,
 		"hitpoints" : 300, 
 		"aggro" : 4,
-		"constructiontime" : 15
+		"constructiontime" : 15,
+        "rng" :  1
 	},
 	{
 		"id" :  13,
@@ -155,50 +162,55 @@
 		"cost" : 400,
 		"hitpoints" : 400, 
 		"aggro" : 3,
-		"constructiontime" : 10
+		"constructiontime" : 10,
+        "rng" :  1
 	},
 	{
 		"id" :  14,
 		"name" :  "Tavern",
-		"beltthumb" :  "assets/textures/buildings/TownHall.png",
+		"beltthumb" :  "assets/textures/buildings/Tavern.png",
 		"model" :  "assets/models/townhall.fbx.json",
 		"size" :  [ 3, 3 ],
 		"cost" : 500,
 		"hitpoints" : 500, 
 		"aggro" : 3,
 		"constructiontime" : 10,
+        "rng" :  1
 	},
 	{
 		"id" :  15,
 		"name" :  "WatchTower",
-		"beltthumb" :  "assets/textures/buildings/StoneMason.png",
+		"beltthumb" :  "assets/textures/buildings/WatchTower.png",
 		"model" :  "assets/models/stonemason.fbx.json",
 		"size" :  [ 2, 2 ],
 		"cost" : 200,
 		"hitpoints" : 100, 
 		"aggro" : 1,
 		"constructiontime" : 10,
+        "rng" :  1
 	},
-		{
+	{
 		"id" :  17,
 		"name" :  "Workshop",
-		"beltthumb" :  "assets/textures/buildings/TownHall.png",
+		"beltthumb" :  "assets/textures/buildings/Workshop.png",
 		"model" :  "assets/models/townhall.fbx.json",
 		"size" :  [ 3, 3 ],
 		"cost" : 400,
 		"hitpoints" : 400, 
 		"aggro" : 3,
 		"constructiontime" : 20,
+        "rng" :  1
 	},
 	{
 		"id" :  18,
 		"name" :  "Refinery",
-		"beltthumb" :  "assets/textures/buildings/StoneMason.png",
+		"beltthumb" :  "assets/textures/buildings/Refinery.png",
 		"model" :  "assets/models/stonemason.fbx.json",
 		"size" :  [ 4, 3 ],
 		"cost" : 500,
 		"hitpoints" : 500, 
 		"aggro" : 3,
 		"constructiontime" : 20,
-	},
+        "rng" :  1
+	}
 ]

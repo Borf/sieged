@@ -2,7 +2,8 @@
     "conveyerspeed": 50,
     "blueprintspersecond": 0.5,
     "stonemasonfactor": 1,
-
+    "unitsperbarracks": 10,
+    "flagsperbarracks": 1,
     "start": 
     {
         "gold": 1000

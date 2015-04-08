@@ -5,9 +5,10 @@
 #include <blib/math/Polygon.h>
 #include <blib/math.h>
 #include <blib/RenderState.h>
+#include <blib/BackgroundTask.h>
 
-
-namespace blib { class Texture; class Animation; class FBO; class Shader; class AnimatableSprite; class Font; class Shader; class StaticModel; 
+namespace blib {
+	class Texture; class Animation; class FBO; class Shader; class AnimatableSprite; class Font; class Shader; class StaticModel;
 namespace json { class Value; }
 }
 class Tile;
@@ -74,16 +75,9 @@ public:
 	Tile()
 	{
 		building = NULL;
-		toBase = 0;
 	}
 
 	bool isWall() { if (!building) return false; return building->buildingTemplate->type == BuildingTemplate::Wall; }
-
-	enum Direction
-	{
-		Left = 1,Right = 2,Up = 4,Down = 8
-	};
-	int toBase;
 };
 
 class Enemy
@@ -92,12 +86,52 @@ public:
 	glm::vec2 position;
 	float speed;
 
-
 	float timeLeftForAttack;
 	int health;
 
 	Enemy(glm::vec2 p) { this->position = p; this->speed = blib::math::randomFloat(0.25f, 1.5f); timeLeftForAttack = 0; health = 5; }
 };
+
+
+enum Direction
+{
+	Left = 1, Right = 2, Up = 4, Down = 8
+};
+class Flowmap
+{
+public:
+	std::vector<std::vector<int> > flow;
+	Building* targetBuilding;
+	glm::ivec2 targetPosition;
+	
+	Flowmap()
+	{
+		flow.resize(100, std::vector<int>(100, 0));
+		targetBuilding = NULL;
+	}
+
+private:
+	Flowmap(const Flowmap& other) { throw "argh";  }
+};
+
+
+
+class Flag
+{
+public:
+	Flowmap flowmap;
+	glm::ivec2 position;
+
+	Flag(const glm::ivec2 &p)
+	{
+		position = p;
+	}
+
+private:
+	Flag(const Flag& other) { throw "argh"; }
+};
+
+
 
 class Sieged : public blib::App
 {
@@ -106,6 +140,12 @@ class Sieged : public blib::App
 	std::vector<Enemy*> enemies;
 	std::vector<std::pair<BuildingTemplate*, float> > conveyorBuildings;
 	std::vector<blib::math::Polygon> collisionWalls;
+	std::vector<Flag*> flags;
+	TileMap tiles;
+	Flowmap flowMap;
+
+	std::list<Flowmap*> flowmaps;
+
 
 	std::vector<std::tuple<glm::mat4, Building*, blib::StaticModel*> > wallCache;
 	blib::StaticModel* enemyModel;
@@ -126,17 +166,24 @@ class Sieged : public blib::App
 
 
 	blib::FBO* shadowMap;
-
+	blib::StaticModel* flagModel;
 	blib::StaticModel* wallModels[6];
 
 	BuildingTemplate* draggingBuilding;
 	int conveyorDragIndex;
 
-	TileMap tiles;
-	struct
+
+	union
 	{
-		blib::AnimatableSprite* wall;
-		blib::AnimatableSprite* market;
+		blib::AnimatableSprite* buttons[5];
+		struct  
+		{
+			blib::AnimatableSprite* wall;
+			blib::AnimatableSprite* market;
+			blib::AnimatableSprite* flag;
+			blib::AnimatableSprite* soldiers;
+			blib::AnimatableSprite* archers;
+		};
 	} buttons;
 
 	glm::vec3 cameraCenter;
@@ -150,6 +197,8 @@ class Sieged : public blib::App
 	float conveyorBuildingsPerSecond;
 	float lastConveyorBuilding = 0;
 	float goldTimeLeft = 0;
+	bool calculatingPaths = false;
+	bool calculatePathsAgain = false;
 
 	bool gamePlaying = false;
 
@@ -164,19 +213,22 @@ class Sieged : public blib::App
 	float wallBuildSpeed = 1;
 	float lightDirection = 0;
 
+	int maxFlagCount = 0;
+
 
 	int gold;
 
 
 
-
+	blib::BackgroundTask<std::map<Flowmap*, std::vector<std::vector<int>>>>* pathCalculateThread;
 
 
 	enum class BuildMode
 	{
 		Normal,
 		Wall,
-		Destroy
+		Destroy,
+		Flag,
 	} mode;
 
 	blib::MouseState prevMouseState;

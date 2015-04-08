@@ -2,6 +2,7 @@
 
 #include <glm/gtc/matrix_transform.hpp>
 #include <fstream>
+#include <set>
 
 #include <blib/Util.h>
 #include <blib/Renderer.h>
@@ -93,10 +94,16 @@ void Sieged::init()
 	}
 
 	enemyModel = new blib::StaticModel("assets/models/cube.fbx.json", resourceManager, renderer);
+	flagModel = new blib::StaticModel("assets/models/flag.fbx.json", resourceManager, renderer);
+	flagModel->meshes[0]->material.texture = resourceManager->getResource<blib::Texture>("assets/models/flag.png");
+
 
 
 	buttons.wall = new blib::AnimatableSprite(resourceManager->getResource<blib::Texture>("assets/textures/hud/btnWall.png"), blib::math::Rectangle(glm::vec2(16, 200), 48, 48));
 	buttons.market = new blib::AnimatableSprite(resourceManager->getResource<blib::Texture>("assets/textures/hud/btnMarket.png"), blib::math::Rectangle(glm::vec2(16, 248), 48, 48));
+	buttons.flag = new blib::AnimatableSprite(resourceManager->getResource<blib::Texture>("assets/textures/hud/btnFlag.png"), blib::math::Rectangle(glm::vec2(16, 296), 48, 48));
+	buttons.soldiers = new blib::AnimatableSprite(resourceManager->getResource<blib::Texture>("assets/textures/hud/btnSoldiers.png"), blib::math::Rectangle(glm::vec2(16, 344), 48, 48));
+	buttons.archers = new blib::AnimatableSprite(resourceManager->getResource<blib::Texture>("assets/textures/hud/btnArchers.png"), blib::math::Rectangle(glm::vec2(16, 392), 48, 48));
 
 	buttons.wall->color = glm::vec4(1, 1, 1, 0);
 
@@ -108,6 +115,9 @@ void Sieged::init()
 		for (int y = 0; y < 100; y++)
 			tiles[x][y] = new Tile();
 
+
+	flowMap.targetBuilding = (Building*)1;
+	flowmaps.push_back(&flowMap);
 
 	calcPaths();
 	calcWalls();
@@ -212,6 +222,8 @@ void Sieged::init()
 	cameraDistance = 30;
 	cameraRotation = 0;
 	threatLevel = 0;
+	pathCalculateThread = NULL;
+	lightDirection = 45.0f;
 }
 
 void Sieged::update(double elapsedTime)
@@ -224,6 +236,10 @@ void Sieged::update(double elapsedTime)
 	if (keyState.isPressed(blib::Key::ESC))
 	{
 		running = false;
+		while (pathCalculateThread)
+		{
+			Sleep(0);
+		}
 		return;
 	}
 
@@ -268,7 +284,7 @@ void Sieged::update(double elapsedTime)
 
 
 
-	conveyorOffset += elapsedTime * conveyorSpeed;
+	conveyorOffset += (float)elapsedTime * conveyorSpeed;
 	while (conveyorOffset > 128)
 		conveyorOffset -= 128;
 
@@ -296,19 +312,29 @@ void Sieged::update(double elapsedTime)
 		else
 		{
 			mousePos3dBegin = mousePos3d;
+			for (blib::AnimatableSprite* button : buttons.buttons)
+				if (button->contains(glm::vec2(mouseState.position)))
+					if (button->animations.empty())
+						button->resizeTo(glm::vec2(1.25f, 1.25f), 0.1f, [this, button]()
+						{
+							button->resizeTo(glm::vec2(0.8f, 0.8f), 0.1f);
+						});
+
+
+
 			if (buttons.wall->contains(glm::vec2(mouseState.position)))
 			{
-				if (buttons.wall->animations.empty())
-				{
-					buttons.wall->resizeTo(glm::vec2(1.25f, 1.25f), 0.1f, [this]()
-					{
-						buttons.wall->resizeTo(glm::vec2(0.8f, 0.8f), 0.1f);
-					});
-				}
 				if (mode == BuildMode::Wall)
 					mode = BuildMode::Normal;
 				else
 					mode = BuildMode::Wall;
+			}
+			if (buttons.flag->contains(glm::vec2(mouseState.position)))
+			{
+				if (mode == BuildMode::Flag)
+					mode = BuildMode::Normal;
+				else
+					mode = BuildMode::Flag;
 			}
 		}
 	}
@@ -352,41 +378,62 @@ void Sieged::update(double elapsedTime)
 			glm::ivec4 end(mousePos3d);
 
 			glm::ivec4 diff = end - start;
-			if (diff.x != 0 || diff.z != 0)
+			if (!buttons.wall->contains(glm::vec2(mouseState.position)))
 			{
 				if (glm::abs(diff.x) > glm::abs(diff.z))
 				{
-					diff.x /= abs(diff.x);
+					if (diff.x != 0)
+						diff.x /= abs(diff.x);
 					diff.z = 0;
 				}
 				else
 				{
 					diff.x = 0;
-					diff.z /= abs(diff.z);
+					if (diff.z != 0)
+						diff.z /= abs(diff.z);
 				}
 
 				while ((diff.x != 0 && start.x != end.x) || (diff.z != 0 && start.z != end.z))
 				{
 					if (!tiles[start.x][start.z]->building)
 						buildings.push_back(new Building(glm::ivec2(start.x, start.z), buildingTemplates[BuildingTemplate::Wall], tiles));
-//					tiles[start.x][start.z]->building = (Building*)1;
 					start += diff;
 				}
-				//tiles[start.x][start.z]->building = (Building*)1;
 				if (!tiles[start.x][start.z]->building)
 					buildings.push_back(new Building(glm::ivec2(start.x, start.z), buildingTemplates[BuildingTemplate::Wall], tiles));
 
 				calcWalls();
 				calcPaths();
-
 			}
-
+		}
+		else if (mode == BuildMode::Flag)
+		{
+			Flag* f = blib::linq::firstOrDefault<Flag*>(flags, [this](Flag* f) { return f->position == glm::ivec2(mousePos3d.x, mousePos3d.z); }, NULL);
+			if (f)
+			{
+				//TODO: only do this when there is no thread active !!!!!!!!!
+				for (std::list<Flowmap*>::iterator it = flowmaps.begin(); it != flowmaps.end(); it++)
+					if (*it == &f->flowmap)
+					{
+						flowmaps.erase(it);
+						break;
+					}
+				blib::linq::deletewhere(flags, [this](Flag* f) { return f->position == glm::ivec2(mousePos3d.x, mousePos3d.z); });
+			}
+			else
+				if (!buttons.flag->contains(glm::vec2(mouseState.position)))
+				{
+					f = new Flag(glm::ivec2(mousePos3d.x, mousePos3d.z));
+					flowmaps.push_back(&f->flowmap);
+					flags.push_back(f);
+					calcPaths();
+				}
 		}
 	}
 
 	if (blib::linq::contains(buildings, [](Building* b){ return b->buildingTemplate->type == BuildingTemplate::TownHall; }))
 	{
-		lastConveyorBuilding -= elapsedTime;
+		lastConveyorBuilding -= (float)elapsedTime;
 		if (lastConveyorBuilding <= 0)
 		{
 			int rng = rand() % rngTotalWeight;
@@ -420,18 +467,18 @@ void Sieged::update(double elapsedTime)
 
 	if (gamePlaying)
 	{
-		threatLevel += elapsedTime / 60.0f;
+		threatLevel += (float)elapsedTime / 60.0f;
 
-		goldTimeLeft -= elapsedTime;
+		goldTimeLeft -= (float)elapsedTime;
 		while (goldTimeLeft < 0)
 		{
 			goldTimeLeft += 1;
 			gold += (blib::linq::count(buildings, [](Building* b) { return b->buildingTemplate->type == BuildingTemplate::MineralMine; })) * 5;
-			gold *= 1 + (blib::linq::count(buildings, [](Building* b) { return b->buildingTemplate->type == BuildingTemplate::Bank; })) * 0.005;
+			gold = (int)(gold * (1 + (blib::linq::count(buildings, [](Building* b) { return b->buildingTemplate->type == BuildingTemplate::Bank; })) * 0.005f));
 		}
 
 
-		nextEnemySpawn -= elapsedTime;
+		nextEnemySpawn -= (float)elapsedTime;
 		if (nextEnemySpawn < 0 && enemies.size() == 0)
 		{
 			nextEnemySpawn = 10 / (threatLevel + 1);
@@ -453,7 +500,7 @@ void Sieged::update(double elapsedTime)
 			glm::ivec2 tile = glm::ivec2(e->position);
 			if (tile.x < 0 || tile.y < 0)
 				continue;
-			int direction = tiles[tile.x][tile.y]->toBase;
+			int direction = flowMap.flow[tile.x][tile.y];
 
 			glm::vec2 oldPos = e->position;
 			glm::vec2 originalPos = oldPos;
@@ -464,25 +511,16 @@ void Sieged::update(double elapsedTime)
 			Building* attackBuilding = NULL;
 
 
-			if ((direction & Tile::Left) != 0)
-				e->position.x -= elapsedTime * e->speed;
+			if ((direction & Left) != 0)
+				e->position.x -= (float)elapsedTime * e->speed;
 			if (tiles[(int)(e->position.x)][(int)(e->position.y)]->building)
 			{
 				e->position = oldPos;
 				attackBuilding = tiles[(int)(e->position.x)][(int)(e->position.y)]->building;
 			}
 			oldPos = e->position;
-			if ((direction & Tile::Right) != 0)
-				e->position.x += elapsedTime * e->speed;
-			if (tiles[(int)(e->position.x)][(int)(e->position.y)]->building)
-			{
-				e->position = oldPos;
-				attackBuilding = tiles[(int)(e->position.x)][(int)(e->position.y)]->building;
-			}
-			oldPos = e->position;
-
-			if ((direction & Tile::Left) == 0 && (direction & Tile::Right) == 0)
-				e->position.x += elapsedTime * (tileCenter.x - e->position.x) * blib::math::randomFloat(0.1f, 0.75f);
+			if ((direction & Right) != 0)
+				e->position.x += (float)elapsedTime * e->speed;
 			if (tiles[(int)(e->position.x)][(int)(e->position.y)]->building)
 			{
 				e->position = oldPos;
@@ -490,17 +528,8 @@ void Sieged::update(double elapsedTime)
 			}
 			oldPos = e->position;
 
-
-			if ((direction & Tile::Down) != 0)
-				e->position.y += elapsedTime * e->speed;
-			if (tiles[(int)(e->position.x)][(int)(e->position.y)]->building)
-			{
-				e->position = oldPos;
-				attackBuilding = tiles[(int)(e->position.x)][(int)(e->position.y)]->building;
-			}
-			oldPos = e->position;
-			if ((direction & Tile::Up) != 0)
-				e->position.y -= elapsedTime * e->speed;
+			if ((direction & Left) == 0 && (direction & Right) == 0)
+				e->position.x += (float)elapsedTime * (tileCenter.x - e->position.x) * blib::math::randomFloat(0.1f, 0.75f);
 			if (tiles[(int)(e->position.x)][(int)(e->position.y)]->building)
 			{
 				e->position = oldPos;
@@ -508,8 +537,26 @@ void Sieged::update(double elapsedTime)
 			}
 			oldPos = e->position;
 
-			if ((direction & Tile::Down) == 0 && (direction & Tile::Up) == 0)
-				e->position.y += elapsedTime * (tileCenter.y - e->position.y) * blib::math::randomFloat(0.1f, 0.75f);
+
+			if ((direction & Down) != 0)
+				e->position.y += (float)elapsedTime * e->speed;
+			if (tiles[(int)(e->position.x)][(int)(e->position.y)]->building)
+			{
+				e->position = oldPos;
+				attackBuilding = tiles[(int)(e->position.x)][(int)(e->position.y)]->building;
+			}
+			oldPos = e->position;
+			if ((direction & Up) != 0)
+				e->position.y -= (float)elapsedTime * e->speed;
+			if (tiles[(int)(e->position.x)][(int)(e->position.y)]->building)
+			{
+				e->position = oldPos;
+				attackBuilding = tiles[(int)(e->position.x)][(int)(e->position.y)]->building;
+			}
+			oldPos = e->position;
+
+			if ((direction & Down) == 0 && (direction & Up) == 0)
+				e->position.y += (float)elapsedTime * (tileCenter.y - e->position.y) * blib::math::randomFloat(0.1f, 0.75f);
 			if (tiles[(int)(e->position.x)][(int)(e->position.y)]->building)
 			{
 				e->position = oldPos;
@@ -625,7 +672,7 @@ void Sieged::update(double elapsedTime)
 	{
 		if (b->buildTimeLeft > 0 && b->buildingTemplate->type == BuildingTemplate::Wall)
 		{
-			b->buildTimeLeft -= elapsedTime * wallBuildSpeed;
+			b->buildTimeLeft -= (float)elapsedTime * wallBuildSpeed;
 			if (b->buildTimeLeft < 0)
 			{
 				b->buildTimeLeft = 0;
@@ -638,7 +685,7 @@ void Sieged::update(double elapsedTime)
 	{
 		if (b->buildTimeLeft > 0 && b->buildingTemplate->type != BuildingTemplate::Wall)
 		{
-			b->buildTimeLeft -= elapsedTime;
+			b->buildTimeLeft -= (float)elapsedTime;
 			if (b->buildTimeLeft < 0)
 			{
 				calcPaths();
@@ -653,16 +700,20 @@ void Sieged::update(double elapsedTime)
 				{
 					gamePlaying = true;
 				}
+				if (b->buildingTemplate->type == BuildingTemplate::Barracks)
+				{
+					maxFlagCount = blib::linq::count(buildings, [](Building* b) { return b->buildingTemplate->type == BuildingTemplate::Barracks; }) * 1;
+				}
 			}
 			break;
 		}
 	}
 
 
-	lightDirection += elapsedTime * 0.001f;
+	lightDirection += (float)elapsedTime * 0.001f;
 
-	buttons.wall->update(elapsedTime);
-	buttons.market->update(elapsedTime);
+	for (blib::AnimatableSprite* button : buttons.buttons)
+		button->update((float)elapsedTime);
 
 	prevMouseState = mouseState;
 }
@@ -775,11 +826,13 @@ void Sieged::draw()
 		e->draw(spriteBatch);
 
 
-	buttons.wall->draw(spriteBatch);
-	buttons.market->draw(spriteBatch);
+	for (blib::AnimatableSprite* button : buttons.buttons)
+		button->draw(spriteBatch);
 
-	spriteBatch->draw(font, "Enemies: " + std::to_string(enemies.size()), blib::math::easyMatrix(glm::vec2(1, 129)), blib::Color::black);
-	spriteBatch->draw(font, "Enemies: " + std::to_string(enemies.size()), blib::math::easyMatrix(glm::vec2(0, 128)));
+	std::string debug = "Enemies: " + std::to_string(enemies.size()) + ", flowmaps: " + std::to_string(flowmaps.size());
+
+	spriteBatch->draw(font, debug, blib::math::easyMatrix(glm::vec2(1, 129)), blib::Color::black);
+	spriteBatch->draw(font, debug, blib::math::easyMatrix(glm::vec2(0, 128)));
 
 	spriteBatch->draw(font, "Mouse: " + std::to_string(mousePos3d.x) + ", " + std::to_string(mousePos3d.y) + ", " + std::to_string(mousePos3d.z), blib::math::easyMatrix(glm::vec2(1, 141)), blib::Color::black);
 	spriteBatch->draw(font, "Mouse: " + std::to_string(mousePos3d.x) + ", " + std::to_string(mousePos3d.y) + ", " + std::to_string(mousePos3d.z), blib::math::easyMatrix(glm::vec2(0, 140)));
@@ -794,6 +847,8 @@ void Sieged::draw()
 	float threatFrac = threatLevel - (int)threatLevel;
 	spriteBatch->draw(whitePixel, blib::math::easyMatrix(glm::vec2(1920 - 75, 50), 0, glm::vec2(50 * threatFrac, 50)), blib::Color::pinkishOrange);
 	spriteBatch->draw(font48, std::to_string((int)threatLevel), blib::math::easyMatrix(glm::vec2(1920 - 60, 50)), blib::Color::black);
+	spriteBatch->draw(font48, std::to_string(flags.size()) + " / " + std::to_string(maxFlagCount), blib::math::easyMatrix(glm::vec2(100, 300)));
+
 
 	spriteBatch->end();
 
@@ -825,7 +880,7 @@ void Sieged::drawWorld(RenderPass renderPass)
 		renderer->unproject(glm::vec2(mouseState.position), &mousePos3d, NULL, cameraMatrix, projectionMatrix);
 
 
-	renderState.activeShader->setUniform(Uniforms::shadowFac, 0.0f);
+	//renderState.activeShader->setUniform(Uniforms::shadowFac, 0.0f);
 
 
 	for (auto e : enemies)
@@ -868,6 +923,22 @@ void Sieged::drawWorld(RenderPass renderPass)
 	renderState.activeShader->setUniform(Uniforms::buildFactor, 1.0f);
 
 
+
+	renderState.activeShader->setUniform(Uniforms::buildFactor, 1.0f);
+	renderState.activeShader->setUniform(Uniforms::colorMult, glm::vec4(1, 1, 1, 1.0f));
+	for (Flag* f : flags)
+	{
+		float height = 0;
+		if (tiles[f->position.x][f->position.y]->building && tiles[f->position.x][f->position.y]->building->buildingTemplate->type == BuildingTemplate::Wall)
+			height = 1.75;
+		glm::mat4 mat;
+		mat = glm::translate(mat, glm::vec3(f->position.x + 0.5f, height, f->position.y + 0.5f));
+		mat = glm::rotate(mat, 90.0f, glm::vec3(0,1,0));
+		renderState.activeShader->setUniform(Uniforms::modelMatrix, mat);
+		renderState.activeShader->setUniform(Uniforms::location, glm::vec2(f->position));
+		flagModel->draw(renderState, renderer, -1);
+	}
+	
 
 
 
@@ -957,6 +1028,16 @@ void Sieged::drawWorld(RenderPass renderPass)
 
 		renderState.depthTest = true;
 	}
+	else if (mode == BuildMode::Flag)
+	{
+		glm::mat4 mat;
+		mat = glm::translate(mat, glm::vec3((int)mousePos3d.x + 0.5f, 0, (int)mousePos3d.z + 0.5f));
+		renderState.activeShader->setUniform(Uniforms::modelMatrix, mat);
+		renderState.activeShader->setUniform(Uniforms::location, glm::vec2(0,0));
+		renderState.activeShader->setUniform(Uniforms::buildFactor, 1.0f);
+		renderState.activeShader->setUniform(Uniforms::colorMult, glm::vec4(1, 1, 1, 0.5f));
+		flagModel->draw(renderState, renderer, -1);
+	}
 }
 
 
@@ -965,93 +1046,126 @@ void Sieged::drawWorld(RenderPass renderPass)
 
 void Sieged::calcPaths()
 {
-	if (!blib::linq::contains(buildings, [](Building* b){ return b->buildingTemplate->type == BuildingTemplate::TownHall; }))
+	if (calculatingPaths)
+	{
+		calculatePathsAgain = true;
 		return;
+	}
+	calculatePathsAgain = false;
+	calculatingPaths = true;
 	double beginTime = blib::util::Profiler::getAppTime();
 
-	new blib::BackgroundTask<std::vector<std::vector<float>>>(this, [=, this]()
+	pathCalculateThread = new blib::BackgroundTask<std::map<Flowmap*, std::vector<std::vector<int>>>>(this, [=, this]()
 	{
 		double beginTime_ = blib::util::Profiler::getAppTime();
-		std::vector<std::vector<float>> costs(100, std::vector<float>(100, 9999999));
-		std::list<glm::ivec2> queue;
 
-		Building* targetBuilding = blib::linq::firstOrDefault<Building*>(buildings, [](Building* b){ return b->buildingTemplate->type == BuildingTemplate::TownHall; }, nullptr);
-
-		for (int x = 0; x < targetBuilding->buildingTemplate->size.x; x++)
-			for (int y = 0; y < targetBuilding->buildingTemplate->size.y; y++)
-				queue.push_back(targetBuilding->position + glm::ivec2(x, y));
-
-		for (auto p : queue)
-			costs[p.x][p.y] = 0;
-		int a = 0;
-		while (!queue.empty())
+		std::map<Flowmap*, std::vector<std::vector<int>>> costs;
+		for (Flowmap* flowMap : flowmaps)
 		{
-			glm::ivec2 pos = queue.back();
-			queue.pop_back();
+			std::vector<std::vector<float>> myCosts(100, std::vector<float>(100, 9999999));
+			//std::set < glm::ivec2, std::function<bool(const glm::ivec2&, const glm::ivec2&)>>queue([](const glm::ivec2 &a, const glm::ivec2 &b) { return a.x == b.x ? a.y < b.y : a.x < b.x; });
+			std::list<glm::ivec2> queue;
 
-			for (int x = -1; x <= 1; x++)
+			if (flowMap->targetBuilding)
 			{
-				for (int y = -1; y <= 1; y++)
+				Building* targetBuilding = blib::linq::firstOrDefault<Building*>(buildings, [](Building* b){ return b->buildingTemplate->type == BuildingTemplate::TownHall; }, nullptr);
+				if (targetBuilding == NULL)
+					continue;
+
+				for (int x = 0; x < targetBuilding->buildingTemplate->size.x; x++)
+					for (int y = 0; y < targetBuilding->buildingTemplate->size.y; y++)
+						queue.push_back(targetBuilding->position + glm::ivec2(x, y));
+			}
+			else
+				queue.push_back(flowMap->targetPosition);
+
+			for (auto p : queue)
+				myCosts[p.x][p.y] = 0;
+			int a = 0;
+
+			while (!queue.empty())
+			{
+				a++;
+				glm::ivec2 pos = queue.back();
+				queue.pop_back();
+
+				for (int x = -1; x <= 1; x++)
 				{
-					if (x == 0 && y == 0)
-						continue;
-					glm::ivec2 offset(x, y);
-					glm::ivec2 newPos = pos + offset;
-					if (newPos.x < 0 || newPos.x >= 100 || newPos.y < 0 || newPos.y >= 100)
-						continue;
-
-					float costFac = 1;
-					if (tiles[newPos.x][newPos.y]->building)
+					for (int y = -1; y <= 1; y++)
 					{
-						if (tiles[newPos.x][newPos.y]->building->buildTimeLeft > 0)
-							costFac = 2;
-						costFac = 10;
+						if (x == 0 && y == 0)
+							continue;
+						glm::ivec2 offset(x, y);
+						glm::ivec2 newPos = pos + offset;
+						if (newPos.x < 0 || newPos.x >= 100 || newPos.y < 0 || newPos.y >= 100)
+							continue;
+
+						float costFac = 1;
+						if (tiles[newPos.x][newPos.y]->building)
+						{
+							if (tiles[newPos.x][newPos.y]->building->buildTimeLeft > 0)
+								costFac = 2;
+							costFac = 10;
+						}
+
+						float newCost = myCosts[pos.x][pos.y] + glm::length(glm::vec2(offset)) * costFac;
+						if (myCosts[newPos.x][newPos.y] < newCost)
+							continue;
+
+						if (!blib::linq::containsValue(queue, newPos))
+							queue.push_front(newPos);
+						myCosts[newPos.x][newPos.y] = newCost;
 					}
-
-					float newCost = costs[pos.x][pos.y] + glm::length(glm::vec2(offset)) * costFac;
-					if (costs[newPos.x][newPos.y] < newCost)
-						continue;
-
-					if (!blib::linq::containsValue(queue, newPos))
-						queue.push_front(newPos);
-					costs[newPos.x][newPos.y] = newCost;
 				}
 			}
+			printf("%i iterations\n", a);
+
+
+			std::vector<std::vector<int>> directions(100, std::vector<int>(100, 0));
+			for (int x = 0; x < 100; x++)
+			{
+				for (int y = 0; y < 100; y++)
+				{
+					if (tiles[x][y]->building)
+						continue;
+					glm::ivec2 m(0, 0);
+					for (int xx = -1; xx <= 1; xx++)
+					{
+						for (int yy = -1; yy <= 1; yy++)
+						{
+							int xxx = x + xx;
+							int yyy = y + yy;
+							if (xxx < 0 || xxx >= 100 || yyy < 0 || yyy >= 100)
+								continue;
+							if (myCosts[xxx][yyy] < myCosts[x + m.x][y + m.y])
+								m = glm::ivec2(xx, yy);
+						}
+					}
+					if (m.x < 0)
+						directions[x][y] |= Left;
+					if (m.x > 0)
+						directions[x][y] |= Right;
+					if (m.y < 0)
+						directions[x][y] |= Up;
+					if (m.y > 0)
+						directions[x][y] |= Down;
+				}
+			}
+
+			costs[flowMap] = directions;
 		}
 		Log::out << "Finding paths: " << (blib::util::Profiler::getAppTime() - beginTime_) << " s " << Log::newline;
+		pathCalculateThread = NULL;
 		return costs;
-	}, [=, this](const std::vector<std::vector<float>>& costs)
+	}, [=, this](const std::map<Flowmap*, std::vector<std::vector<int>>>& costs)
 	{
-		for (int x = 0; x < 100; x++)
+		for (const std::pair<Flowmap*, std::vector<std::vector<int>>> &it : costs)
 		{
-			for (int y = 0; y < 100; y++)
-			{
-				tiles[x][y]->toBase = 0;
-				if (tiles[x][y]->building)
-					continue;
-				glm::ivec2 m(0, 0);
-				for (int xx = -1; xx <= 1; xx++)
-				{
-					for (int yy = -1; yy <= 1; yy++)
-					{
-						int xxx = x + xx;
-						int yyy = y + yy;
-						if (xxx < 0 || xxx >= 100 || yyy < 0 || yyy >= 100)
-							continue;
-						if (costs[xxx][yyy] < costs[x + m.x][y + m.y])
-							m = glm::ivec2(xx, yy);
-					}
-				}
-				if (m.x < 0)
-					tiles[x][y]->toBase |= Tile::Left;
-				if (m.x > 0)
-					tiles[x][y]->toBase |= Tile::Right;
-				if (m.y < 0)
-					tiles[x][y]->toBase |= Tile::Up;
-				if (m.y > 0)
-					tiles[x][y]->toBase |= Tile::Down;
-			}
+			Flowmap* flowMap = it.first;
+			const std::vector<std::vector<int>>& directions = it.second;
+			it.first->flow = directions;
 		}
+
 		Log::out << "Path calculations: " << (blib::util::Profiler::getAppTime() - beginTime) << " s " << Log::newline;
 		ClipperLib::Clipper clipper;
 		ClipperLib::Polygons subject;
@@ -1078,7 +1192,9 @@ void Sieged::calcPaths()
 		collisionWalls.clear();
 		for (ClipperLib::Polygon& p : result)
 			collisionWalls.push_back(p);
-
+		calculatingPaths = false;
+		if (calculatePathsAgain)
+			calcPaths();
 	});
 }
 void Sieged::calcWalls()
