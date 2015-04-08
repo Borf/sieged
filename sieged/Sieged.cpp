@@ -94,10 +94,13 @@ void Sieged::init()
 	}
 
 	enemyModel = new blib::StaticModel("assets/models/cube.fbx.json", resourceManager, renderer);
+	enemyModel->meshes[0]->material.texture = resourceManager->getResource<blib::Texture>("assets/models/cube.png");
+
+	dudeModel= new blib::StaticModel("assets/models/cube.fbx.json", resourceManager, renderer);
+	dudeModel->meshes[0]->material.texture = resourceManager->getResource<blib::Texture>("assets/models/cube.png");
+
 	flagModel = new blib::StaticModel("assets/models/flag.fbx.json", resourceManager, renderer);
 	flagModel->meshes[0]->material.texture = resourceManager->getResource<blib::Texture>("assets/models/flag.png");
-
-
 
 	buttons.wall = new blib::AnimatableSprite(resourceManager->getResource<blib::Texture>("assets/textures/hud/btnWall.png"), blib::math::Rectangle(glm::vec2(16, 200), 48, 48));
 	buttons.market = new blib::AnimatableSprite(resourceManager->getResource<blib::Texture>("assets/textures/hud/btnMarket.png"), blib::math::Rectangle(glm::vec2(16, 248), 48, 48));
@@ -336,6 +339,13 @@ void Sieged::update(double elapsedTime)
 				else
 					mode = BuildMode::Flag;
 			}
+			if (buttons.soldiers->contains(glm::vec2(mouseState.position)))
+			{
+				Soldier* f = new Soldier(glm::vec2(50, 50));
+				f->flowmap = &flags[0]->flowmap;
+				soldiers.push_back(f);
+
+			}
 		}
 	}
 
@@ -479,7 +489,7 @@ void Sieged::update(double elapsedTime)
 
 
 		nextEnemySpawn -= (float)elapsedTime;
-		if (nextEnemySpawn < 0 && enemies.size() == 0)
+		if (nextEnemySpawn < 0)
 		{
 			nextEnemySpawn = 10 / (threatLevel + 1);
 
@@ -488,84 +498,44 @@ void Sieged::update(double elapsedTime)
 				glm::vec2 pos = glm::vec2(50,50) + 49.0f * blib::util::fromAngle(blib::math::randomFloat(0, 2 * blib::math::pif));
 				if (tiles[(int)(pos.x)][(int)(pos.y)]->building)
 					continue;
-				enemies.push_back(new Enemy(pos));
+				enemies.push_back(new Enemy(pos, &flowMap));
 				break;
 			}
+		}
+
+
+		for (auto s : soldiers)
+		{
+			glm::vec2 originalPos = s->position;
+			s->updateMovement(elapsedTime, tiles);
+
+			for (auto ee : soldiers)
+			{
+				if (s == ee)
+					continue;
+				glm::vec2 diff = ee->position - s->position;
+				float len = glm::length(diff);
+				if (len < 0.2f && len > 0.001f)
+				{
+					diff /= len;
+					s->position += (0.2f - len) * -0.5f * diff;
+					ee->position += (0.2f - len) * 0.5f * diff;
+				}
+			}
+			if (tiles[(int)(s->position.x)][(int)(s->position.y)]->building)
+				s->position = originalPos;
+			originalPos = s->position;
 		}
 
 
 		for (size_t i = 0; i < enemies.size(); i++)
 		{
 			Enemy* e = enemies[i];
-			glm::ivec2 tile = glm::ivec2(e->position);
-			if (tile.x < 0 || tile.y < 0)
-				continue;
-			int direction = flowMap.flow[tile.x][tile.y];
-
-			glm::vec2 oldPos = e->position;
-			glm::vec2 originalPos = oldPos;
-
-			glm::vec2 tileCenter = glm::vec2(tile) + glm::vec2(0.5f, 0.5f);
-
-
-			Building* attackBuilding = NULL;
-
-
-			if ((direction & Left) != 0)
-				e->position.x -= (float)elapsedTime * e->speed;
-			if (tiles[(int)(e->position.x)][(int)(e->position.y)]->building)
-			{
-				e->position = oldPos;
-				attackBuilding = tiles[(int)(e->position.x)][(int)(e->position.y)]->building;
-			}
-			oldPos = e->position;
-			if ((direction & Right) != 0)
-				e->position.x += (float)elapsedTime * e->speed;
-			if (tiles[(int)(e->position.x)][(int)(e->position.y)]->building)
-			{
-				e->position = oldPos;
-				attackBuilding = tiles[(int)(e->position.x)][(int)(e->position.y)]->building;
-			}
-			oldPos = e->position;
-
-			if ((direction & Left) == 0 && (direction & Right) == 0)
-				e->position.x += (float)elapsedTime * (tileCenter.x - e->position.x) * blib::math::randomFloat(0.1f, 0.75f);
-			if (tiles[(int)(e->position.x)][(int)(e->position.y)]->building)
-			{
-				e->position = oldPos;
-				attackBuilding = tiles[(int)(e->position.x)][(int)(e->position.y)]->building;
-			}
-			oldPos = e->position;
-
-
-			if ((direction & Down) != 0)
-				e->position.y += (float)elapsedTime * e->speed;
-			if (tiles[(int)(e->position.x)][(int)(e->position.y)]->building)
-			{
-				e->position = oldPos;
-				attackBuilding = tiles[(int)(e->position.x)][(int)(e->position.y)]->building;
-			}
-			oldPos = e->position;
-			if ((direction & Up) != 0)
-				e->position.y -= (float)elapsedTime * e->speed;
-			if (tiles[(int)(e->position.x)][(int)(e->position.y)]->building)
-			{
-				e->position = oldPos;
-				attackBuilding = tiles[(int)(e->position.x)][(int)(e->position.y)]->building;
-			}
-			oldPos = e->position;
-
-			if ((direction & Down) == 0 && (direction & Up) == 0)
-				e->position.y += (float)elapsedTime * (tileCenter.y - e->position.y) * blib::math::randomFloat(0.1f, 0.75f);
-			if (tiles[(int)(e->position.x)][(int)(e->position.y)]->building)
-			{
-				e->position = oldPos;
-				attackBuilding = tiles[(int)(e->position.x)][(int)(e->position.y)]->building;
-			}
-			oldPos = e->position;
-
 			
-			if (originalPos == oldPos && !attackBuilding)
+			glm::vec2 originalPos = e->position;
+			Building* attackBuilding = e->updateMovement((float)elapsedTime, tiles);
+			
+			if (originalPos == e->position && !attackBuilding)
 			{
 				if (tiles[(int)(e->position.x)][(int)(e->position.y)]->building)
 					attackBuilding = tiles[(int)(e->position.x)][(int)(e->position.y)]->building;
@@ -618,12 +588,9 @@ void Sieged::update(double elapsedTime)
 					calcPaths();
 					calcWalls();
 				}
-
 			}
 
-
-
-			if (direction == 0) // oops
+			/*if (direction == 0) // oops
 			{
 				//find nearest wall
 				glm::vec2 closestPoint;
@@ -638,7 +605,7 @@ void Sieged::update(double elapsedTime)
 					}
 				}
 				oldPos = e->position = closestPoint;
-			}
+			}*/
 
 
 			for (auto ee : enemies)
@@ -655,8 +622,8 @@ void Sieged::update(double elapsedTime)
 				}
 			}
 			if (tiles[(int)(e->position.x)][(int)(e->position.y)]->building)
-				e->position = oldPos;
-			oldPos = e->position;
+				e->position = originalPos;
+			originalPos = e->position;
 		}
 
 
@@ -888,6 +855,17 @@ void Sieged::drawWorld(RenderPass renderPass)
 		glm::mat4 mat;
 		mat = glm::translate(mat, glm::vec3(e->position.x, 1.0f, e->position.y));
 		mat = glm::scale(mat, glm::vec3(0.15f, 2, 0.15f));
+		renderState.activeShader->setUniform(Uniforms::modelMatrix, mat);
+		renderState.activeShader->setUniform(Uniforms::colorMult, glm::vec4(1, 1, 1, 1));
+		//renderer->drawTriangles(cube, renderState);
+		enemyModel->draw(renderState, renderer, -1);
+	}
+
+	for (auto e : soldiers)
+	{
+		glm::mat4 mat;
+		mat = glm::translate(mat, glm::vec3(e->position.x, 1.0f, e->position.y));
+		mat = glm::scale(mat, glm::vec3(0.15f, 3, 0.15f));
 		renderState.activeShader->setUniform(Uniforms::modelMatrix, mat);
 		renderState.activeShader->setUniform(Uniforms::colorMult, glm::vec4(1, 1, 1, 1));
 		//renderer->drawTriangles(cube, renderState);
@@ -1376,4 +1354,77 @@ BuildingTemplate::BuildingTemplate(const blib::json::Value &data, blib::TextureM
 	healthbarSize = 7000;
 	if (data.isMember("healthbarsize"))
 		healthbarSize = data["healthbarsize"];
+}
+
+
+Building* Character::updateMovement(float elapsedTime, TileMap &tiles)
+{
+	glm::ivec2 tile = glm::ivec2(position);
+	if (tile.x < 0 || tile.y < 0)
+		return NULL;
+	int direction = flowmap->flow[tile.x][tile.y];
+
+	glm::vec2 oldPos = position;
+	glm::vec2 originalPos = oldPos;
+
+	glm::vec2 tileCenter = glm::vec2(tile) + glm::vec2(0.5f, 0.5f);
+
+
+	Building* attackBuilding = NULL;
+
+
+	if ((direction & Left) != 0)
+		position.x -= (float)elapsedTime * speed;
+	if (tiles[(int)(position.x)][(int)(position.y)]->building)
+	{
+		position = oldPos;
+		attackBuilding = tiles[(int)(position.x)][(int)(position.y)]->building;
+	}
+	oldPos = position;
+	if ((direction & Right) != 0)
+		position.x += (float)elapsedTime * speed;
+	if (tiles[(int)(position.x)][(int)(position.y)]->building)
+	{
+		position = oldPos;
+		attackBuilding = tiles[(int)(position.x)][(int)(position.y)]->building;
+	}
+	oldPos = position;
+
+	if ((direction & Left) == 0 && (direction & Right) == 0)
+		position.x += (float)elapsedTime * (tileCenter.x - position.x) * blib::math::randomFloat(0.1f, 0.75f);
+	if (tiles[(int)(position.x)][(int)(position.y)]->building)
+	{
+		position = oldPos;
+		attackBuilding = tiles[(int)(position.x)][(int)(position.y)]->building;
+	}
+	oldPos = position;
+
+
+	if ((direction & Down) != 0)
+		position.y += (float)elapsedTime * speed;
+	if (tiles[(int)(position.x)][(int)(position.y)]->building)
+	{
+		position = oldPos;
+		attackBuilding = tiles[(int)(position.x)][(int)(position.y)]->building;
+	}
+	oldPos = position;
+	if ((direction & Up) != 0)
+		position.y -= (float)elapsedTime * speed;
+	if (tiles[(int)(position.x)][(int)(position.y)]->building)
+	{
+		position = oldPos;
+		attackBuilding = tiles[(int)(position.x)][(int)(position.y)]->building;
+	}
+	oldPos = position;
+
+	if ((direction & Down) == 0 && (direction & Up) == 0)
+		position.y += (float)elapsedTime * (tileCenter.y - position.y) * blib::math::randomFloat(0.1f, 0.75f);
+	if (tiles[(int)(position.x)][(int)(position.y)]->building)
+	{
+		position = oldPos;
+		attackBuilding = tiles[(int)(position.x)][(int)(position.y)]->building;
+	}
+	oldPos = position;
+
+	return attackBuilding;
 }

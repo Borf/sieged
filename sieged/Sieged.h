@@ -80,17 +80,7 @@ public:
 	bool isWall() { if (!building) return false; return building->buildingTemplate->type == BuildingTemplate::Wall; }
 };
 
-class Enemy
-{
-public:
-	glm::vec2 position;
-	float speed;
 
-	float timeLeftForAttack;
-	int health;
-
-	Enemy(glm::vec2 p) { this->position = p; this->speed = blib::math::randomFloat(0.25f, 1.5f); timeLeftForAttack = 0; health = 5; }
-};
 
 
 enum Direction
@@ -125,13 +115,44 @@ public:
 	Flag(const glm::ivec2 &p)
 	{
 		position = p;
+		flowmap.targetPosition = p;
 	}
 
 private:
 	Flag(const Flag& other) { throw "argh"; }
 };
 
+class Character
+{
+public:
+	glm::vec2 position;
+	float speed;
+	Flowmap* flowmap;
 
+
+	Building* updateMovement(float elapsedTime, TileMap &tiles);
+};
+
+class Archer : public Character
+{
+public:
+};
+
+class Soldier : public Character
+{
+public:
+	Soldier(glm::vec2 p) { this->position = p; this->speed = blib::math::randomFloat(0.25f, 1.5f); }
+};
+
+
+class Enemy : public Character
+{
+public:
+	float timeLeftForAttack;
+	int health;
+
+	Enemy(glm::vec2 p, Flowmap* flowMap) { this->position = p; this->speed = blib::math::randomFloat(0.25f, 1.5f); timeLeftForAttack = 0; health = 5; this->flowmap = flowMap; }
+};
 
 class Sieged : public blib::App
 {
@@ -141,6 +162,10 @@ class Sieged : public blib::App
 	std::vector<std::pair<BuildingTemplate*, float> > conveyorBuildings;
 	std::vector<blib::math::Polygon> collisionWalls;
 	std::vector<Flag*> flags;
+
+	std::vector<Soldier*> soldiers;
+	std::vector<Archer*> archers;
+
 	TileMap tiles;
 	Flowmap flowMap;
 
@@ -149,6 +174,7 @@ class Sieged : public blib::App
 
 	std::vector<std::tuple<glm::mat4, Building*, blib::StaticModel*> > wallCache;
 	blib::StaticModel* enemyModel;
+	blib::StaticModel* dudeModel;
 
 	blib::Font* font;
 	blib::Font* font48;
