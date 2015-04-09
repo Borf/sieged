@@ -43,7 +43,7 @@
     <None Include="..\assets\shaders\gl\simple.vert">
       <Filter>assets\shaders</Filter>
     </None>
-    <None Include="..\assets\models\cube.fbx">
+    <None Include="..\assets\models\flag.fbx">
       <Filter>assets\models</Filter>
     </None>
   </ItemGroup>
@@ -109,6 +109,9 @@
       <Filter>assets\models</Filter>
     </CustomBuild>
     <CustomBuild Include="..\assets\models\wall6.fbx">
+      <Filter>assets\models</Filter>
+    </CustomBuild>
+    <CustomBuild Include="..\assets\models\cube.fbx">
       <Filter>assets\models</Filter>
     </CustomBuild>
   </ItemGroup>
