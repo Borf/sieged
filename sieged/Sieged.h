@@ -91,13 +91,13 @@ class Flowmap
 {
 public:
 	std::vector<std::vector<int> > flow;
-	Building* targetBuilding;
-	glm::ivec2 targetPosition;
+	Building* srcBuilding;
+	glm::ivec2 srcPosition;
 	
 	Flowmap()
 	{
 		flow.resize(100, std::vector<int>(100, 0));
-		targetBuilding = NULL;
+		srcBuilding = NULL;
 	}
 
 private:
@@ -105,6 +105,7 @@ private:
 };
 
 
+class Soldier;
 
 class Flag
 {
@@ -112,10 +113,12 @@ public:
 	Flowmap flowmap;
 	glm::ivec2 position;
 
+	std::vector<Soldier*> soldiers;
+
 	Flag(const glm::ivec2 &p)
 	{
 		position = p;
-		flowmap.targetPosition = p;
+		flowmap.srcPosition = p;
 	}
 
 private:
@@ -141,7 +144,7 @@ public:
 class Soldier : public Character
 {
 public:
-	Soldier(glm::vec2 p) { this->position = p; this->speed = blib::math::randomFloat(0.25f, 1.5f); }
+	Soldier(glm::vec2 p) { this->position = p; this->speed = blib::math::randomFloat(1.25f, 1.5f); }
 };
 
 
@@ -163,13 +166,16 @@ class Sieged : public blib::App
 	std::vector<blib::math::Polygon> collisionWalls;
 	std::vector<Flag*> flags;
 
+
+	std::vector<Flag*> flagsToErase;
+
 	std::vector<Soldier*> soldiers;
 	std::vector<Archer*> archers;
 
 	TileMap tiles;
 	Flowmap flowMap;
 
-	std::list<Flowmap*> flowmaps;
+	std::vector<Flowmap*> flowmaps;
 
 
 	std::vector<std::tuple<glm::mat4, Building*, blib::StaticModel*> > wallCache;

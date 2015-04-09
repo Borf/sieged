@@ -119,7 +119,7 @@ void Sieged::init()
 			tiles[x][y] = new Tile();
 
 
-	flowMap.targetBuilding = (Building*)1;
+	flowMap.srcBuilding = (Building*)1;
 	flowmaps.push_back(&flowMap);
 
 	calcPaths();
@@ -218,6 +218,7 @@ void Sieged::init()
 	draggingBuilding = NULL;
 	conveyorDragIndex = -1;
 	conveyorBuildings.push_back(std::pair<BuildingTemplate*, float>(buildingTemplates[BuildingTemplate::TownHall], 1920.0f));
+	conveyorBuildings.push_back(std::pair<BuildingTemplate*, float>(buildingTemplates[BuildingTemplate::Barracks], 1920.0f+64));
 
 
 	cameraCenter = glm::vec3(50, 0, 50);
@@ -341,9 +342,15 @@ void Sieged::update(double elapsedTime)
 			}
 			if (buttons.soldiers->contains(glm::vec2(mouseState.position)))
 			{
-				Soldier* f = new Soldier(glm::vec2(50, 50));
-				f->flowmap = &flags[0]->flowmap;
-				soldiers.push_back(f);
+				std::sort(flags.begin(), flags.end(), [](Flag* a, Flag* b) { return a->soldiers.size() < b->soldiers.size();  });
+				Flag* flag = flags[0];
+
+				Building* barracks = blib::linq::firstOrDefault<Building*>(buildings, [](Building* b) { return b->buildingTemplate->type == BuildingTemplate::Barracks; });
+				assert(barracks);
+				Soldier* soldier = new Soldier(glm::vec2(barracks->position) + glm::vec2(barracks->buildingTemplate->size) / 2.0f);
+				soldier->flowmap = &flag->flowmap;
+				flag->soldiers.push_back(soldier);
+				soldiers.push_back(soldier);
 
 			}
 		}
@@ -421,14 +428,21 @@ void Sieged::update(double elapsedTime)
 			Flag* f = blib::linq::firstOrDefault<Flag*>(flags, [this](Flag* f) { return f->position == glm::ivec2(mousePos3d.x, mousePos3d.z); }, NULL);
 			if (f)
 			{
-				//TODO: only do this when there is no thread active !!!!!!!!!
-				for (std::list<Flowmap*>::iterator it = flowmaps.begin(); it != flowmaps.end(); it++)
-					if (*it == &f->flowmap)
-					{
-						flowmaps.erase(it);
-						break;
-					}
-				blib::linq::deletewhere(flags, [this](Flag* f) { return f->position == glm::ivec2(mousePos3d.x, mousePos3d.z); });
+				blib::linq::removewhere(flags, [this](Flag* f) { return f->position == glm::ivec2(mousePos3d.x, mousePos3d.z); });
+				blib::linq::removewhere(flowmaps, [f](Flowmap* fm) { return fm == &f->flowmap; });
+
+
+				std::vector<Soldier*> solds = f->soldiers;
+				flagsToErase.push_back(f);
+
+				for (auto s : solds)
+				{
+					std::sort(flags.begin(), flags.end(), [](Flag* a, Flag* b) { return a->soldiers.size() < b->soldiers.size();  });
+					flags[0]->soldiers.push_back(s);
+					s->flowmap = &flags[0]->flowmap;
+				}
+
+
 			}
 			else
 				if (!buttons.flag->contains(glm::vec2(mouseState.position)))
@@ -484,7 +498,7 @@ void Sieged::update(double elapsedTime)
 		{
 			goldTimeLeft += 1;
 			gold += (blib::linq::count(buildings, [](Building* b) { return b->buildingTemplate->type == BuildingTemplate::MineralMine; })) * 5;
-			gold = (int)(gold * (1 + (blib::linq::count(buildings, [](Building* b) { return b->buildingTemplate->type == BuildingTemplate::Bank; })) * 0.005f));
+			gold = glm::max(gold+1, (int)(gold * (1 + (blib::linq::count(buildings, [](Building* b) { return b->buildingTemplate->type == BuildingTemplate::Bank; })) * 0.005f)));
 		}
 
 
@@ -507,7 +521,7 @@ void Sieged::update(double elapsedTime)
 		for (auto s : soldiers)
 		{
 			glm::vec2 originalPos = s->position;
-			s->updateMovement(elapsedTime, tiles);
+			s->updateMovement((float)elapsedTime, tiles);
 
 			for (auto ee : soldiers)
 			{
@@ -523,7 +537,16 @@ void Sieged::update(double elapsedTime)
 				}
 			}
 			if (tiles[(int)(s->position.x)][(int)(s->position.y)]->building)
-				s->position = originalPos;
+			{
+				Building* b = tiles[(int)(s->position.x)][(int)(s->position.y)]->building;
+
+				blib::math::Rectangle buildRect(glm::vec2(b->position), b->buildingTemplate->size.x, b->buildingTemplate->size.y);
+				glm::vec2 projection = buildRect.projectClosest(s->position);
+				s->position += 1.05f * (projection - s->position);
+
+			}
+
+
 			originalPos = s->position;
 		}
 
@@ -576,7 +599,7 @@ void Sieged::update(double elapsedTime)
 						}
 					}
 
-					for (int i = 0; i < buildings.size(); i++)
+					for (size_t i = 0; i < buildings.size(); i++)
 					{
 						if (buildings[i] == attackBuilding)
 						{
@@ -1038,13 +1061,14 @@ void Sieged::calcPaths()
 		double beginTime_ = blib::util::Profiler::getAppTime();
 
 		std::map<Flowmap*, std::vector<std::vector<int>>> costs;
-		for (Flowmap* flowMap : flowmaps)
+		for (size_t ie = 0; ie < flowmaps.size(); ie++) //use for here instead of foreach, because the main thread can change the array, causing iterators to go invalid
 		{
+			Flowmap* flowMap = flowmaps[ie];
 			std::vector<std::vector<float>> myCosts(100, std::vector<float>(100, 9999999));
 			//std::set < glm::ivec2, std::function<bool(const glm::ivec2&, const glm::ivec2&)>>queue([](const glm::ivec2 &a, const glm::ivec2 &b) { return a.x == b.x ? a.y < b.y : a.x < b.x; });
 			std::list<glm::ivec2> queue;
 
-			if (flowMap->targetBuilding)
+			if (flowMap->srcBuilding)
 			{
 				Building* targetBuilding = blib::linq::firstOrDefault<Building*>(buildings, [](Building* b){ return b->buildingTemplate->type == BuildingTemplate::TownHall; }, nullptr);
 				if (targetBuilding == NULL)
@@ -1055,7 +1079,7 @@ void Sieged::calcPaths()
 						queue.push_back(targetBuilding->position + glm::ivec2(x, y));
 			}
 			else
-				queue.push_back(flowMap->targetPosition);
+				queue.push_back(flowMap->srcPosition);
 
 			for (auto p : queue)
 				myCosts[p.x][p.y] = 0;
@@ -1143,6 +1167,17 @@ void Sieged::calcPaths()
 			const std::vector<std::vector<int>>& directions = it.second;
 			it.first->flow = directions;
 		}
+
+
+		if (!flagsToErase.empty())
+		{
+			for (auto f : flagsToErase)
+				delete f;
+			flagsToErase.clear();
+		}
+
+
+
 
 		Log::out << "Path calculations: " << (blib::util::Profiler::getAppTime() - beginTime) << " s " << Log::newline;
 		ClipperLib::Clipper clipper;
