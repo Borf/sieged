@@ -93,11 +93,12 @@ public:
 	std::vector<std::vector<int> > flow;
 	Building* srcBuilding;
 	glm::ivec2 srcPosition;
-	
+	Building* stopAtBuilding;
 	Flowmap()
 	{
 		flow.resize(100, std::vector<int>(100, 0));
 		srcBuilding = NULL;
+		stopAtBuilding = NULL;
 	}
 
 private:

@@ -1061,10 +1061,15 @@ void Sieged::calcPaths()
 		double beginTime_ = blib::util::Profiler::getAppTime();
 
 		std::map<Flowmap*, std::vector<std::vector<int>>> costs;
+		std::vector<std::vector<float>> myCosts(100, std::vector<float>(100, 9999999));
 		for (size_t ie = 0; ie < flowmaps.size(); ie++) //use for here instead of foreach, because the main thread can change the array, causing iterators to go invalid
 		{
 			Flowmap* flowMap = flowmaps[ie];
-			std::vector<std::vector<float>> myCosts(100, std::vector<float>(100, 9999999));
+
+			for (int y = 0; y < 100; y++)
+				for (int x = 0; x < 100; x++)
+					myCosts[y][x] = 9999999;
+
 			//std::set < glm::ivec2, std::function<bool(const glm::ivec2&, const glm::ivec2&)>>queue([](const glm::ivec2 &a, const glm::ivec2 &b) { return a.x == b.x ? a.y < b.y : a.x < b.x; });
 			std::list<glm::ivec2> queue;
 
@@ -1091,6 +1096,11 @@ void Sieged::calcPaths()
 				glm::ivec2 pos = queue.back();
 				queue.pop_back();
 
+				if (!flowMap->srcBuilding && tiles[pos.x][pos.y]->building && tiles[pos.x][pos.y]->building->buildingTemplate->type == BuildingTemplate::Barracks)
+				{
+					queue.clear();
+					break;
+				}
 				for (int x = -1; x <= 1; x++)
 				{
 					for (int y = -1; y <= 1; y++)
@@ -1123,7 +1133,8 @@ void Sieged::calcPaths()
 			printf("%i iterations\n", a);
 
 
-			std::vector<std::vector<int>> directions(100, std::vector<int>(100, 0));
+			costs[flowMap] = std::vector<std::vector<int>>(100, std::vector<int>(100, 0));
+			std::vector<std::vector<int>> &directions = costs[flowMap];
 			for (int x = 0; x < 100; x++)
 			{
 				for (int y = 0; y < 100; y++)
@@ -1154,7 +1165,6 @@ void Sieged::calcPaths()
 				}
 			}
 
-			costs[flowMap] = directions;
 		}
 		Log::out << "Finding paths: " << (blib::util::Profiler::getAppTime() - beginTime_) << " s " << Log::newline;
 		pathCalculateThread = NULL;
