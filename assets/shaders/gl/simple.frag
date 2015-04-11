@@ -6,6 +6,7 @@ uniform vec4 colorMult;
 uniform float buildFactor;
 uniform vec2 location;
 uniform float shadowFac;
+uniform vec3 lightDirection;
 
 varying vec2 texcoord;
 varying vec3 normal;
@@ -132,17 +133,19 @@ void main()
 		}
 	}
 
-	float diffuse = dot(normalize(normal), normalize(vec3(0.5,1,0.5)));
+	float diffuse = dot(normalize(normal), normalize(lightDirection));
 	diffuse = clamp(diffuse, 0.0,1.0);
 
-	float light = 0.5 * diffuse + 0.5;
+	//diffuse = pow(diffuse, 0.25);
+
+	float light = 0.8 * diffuse + 0.2;
 
 	vec4 color = texture2D(s_texture, texcoord);
 
 
 
 
-	light *= visibility;
+	light = min(light, visibility);
 
 
 	gl_FragColor = vec4(colorMult.rgb * color.rgb * light, colorMult.a * color.a);

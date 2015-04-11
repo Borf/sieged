@@ -762,6 +762,7 @@ void Sieged::draw()
 	renderState.activeShader = backgroundShader;
 	renderState.activeShader->setUniform(Uniforms::shadowCameraMatrix, shadowCameraMatrix);
 	renderState.activeShader->setUniform(Uniforms::shadowProjectionMatrix, shadowProjectionMatrix);
+	renderState.activeShader->setUniform(Uniforms::lightDirection, lightAngle);
 
 	renderState.activeShader->setUniform(Uniforms::CameraMatrix, cameraMatrix);
 	renderState.activeShader->setUniform(Uniforms::ProjectionMatrix, projectionMatrix);
