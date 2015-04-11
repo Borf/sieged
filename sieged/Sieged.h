@@ -130,9 +130,13 @@ class Character
 {
 public:
 	glm::vec2 position;
+	glm::vec2 movementDirection;
 	float speed;
 	Flowmap* flowmap;
 
+
+	void move(TileMap& tiles, float elapsedTime);
+	glm::vec2 directionFromFlowMap();
 
 	Building* updateMovement(float elapsedTime, TileMap &tiles);
 };
@@ -145,7 +149,9 @@ public:
 class Soldier : public Character
 {
 public:
-	Soldier(glm::vec2 p) { this->position = p; this->speed = blib::math::randomFloat(1.25f, 1.5f); }
+	Soldier(glm::vec2 p) { this->position = p; this->speed = blib::math::randomFloat(1.25f, 1.5f); health = 5; timeLeftForAttack = 0; }
+	float timeLeftForAttack;
+	int health;
 };
 
 

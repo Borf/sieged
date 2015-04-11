@@ -134,7 +134,7 @@
 		"name" :  "ImposingTauntingStatue",
 		"beltthumb" :  "assets/textures/buildings/ImposingStatue.png",
 		"model" :  "assets/models/imposingstatue.fbx.json",
-		"size" :  [ 3, 2 ],
+		"size" :  [ 2, 2 ],
 		"cost" : 250,
 		"hitpoints" : 750, 
 		"aggro" : 6,
