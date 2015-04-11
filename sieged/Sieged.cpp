@@ -342,16 +342,20 @@ void Sieged::update(double elapsedTime)
 			}
 			if (buttons.soldiers->contains(glm::vec2(mouseState.position)))
 			{
-				std::sort(flags.begin(), flags.end(), [](Flag* a, Flag* b) { return a->soldiers.size() < b->soldiers.size();  });
-				Flag* flag = flags[0];
-
 				Building* barracks = blib::linq::firstOrDefault<Building*>(buildings, [](Building* b) { return b->buildingTemplate->type == BuildingTemplate::Barracks; });
 				assert(barracks);
-				Soldier* soldier = new Soldier(glm::vec2(barracks->position) + glm::vec2(barracks->buildingTemplate->size) / 2.0f);
-				soldier->flowmap = &flag->flowmap;
-				flag->soldiers.push_back(soldier);
+				Soldier* soldier = new Soldier(glm::vec2(barracks->position) + glm::vec2(1.5, barracks->buildingTemplate->size.y + 0.1f));
+				soldier->flowmap = NULL;
 				soldiers.push_back(soldier);
+				
+				if (!flags.empty())
+				{
+					std::sort(flags.begin(), flags.end(), [](Flag* a, Flag* b) { return a->soldiers.size() < b->soldiers.size();  });
+					Flag* flag = flags[0];
 
+					soldier->flowmap = &flag->flowmap;
+					flag->soldiers.push_back(soldier);
+				}
 			}
 		}
 	}
@@ -979,9 +983,10 @@ void Sieged::drawWorld(RenderPass renderPass)
 				lineVerts.push_back(blib::VertexP3N3C4(glm::vec3(e[ii].x, 1, e[ii].y), glm::vec3(0, 1, 0), glm::vec4(0, 0, 1, 1)));
 			}
 		}
+		renderState.activeTexture[0] = whitePixel;
 		renderState.activeShader->setUniform(Uniforms::modelMatrix, glm::mat4());
-		renderState.activeShader->setUniform(Uniforms::colorMult, glm::vec4(1, 1, 1, 1));
-		renderer->drawLines(lineVerts, renderState);
+		renderState.activeShader->setUniform(Uniforms::colorMult, glm::vec4(1, 1, 9, 1));
+		renderer->drawLines(lineVerts, 10.0f, renderState);
 	}
 
 
@@ -1097,7 +1102,7 @@ void Sieged::calcPaths()
 				glm::ivec2 pos = queue.back();
 				queue.pop_back();
 
-				if (!flowMap->srcBuilding && tiles[pos.x][pos.y]->building && tiles[pos.x][pos.y]->building->buildingTemplate->type == BuildingTemplate::Barracks)
+				if (!flowMap->srcBuilding && tiles[pos.x][pos.y]->building && tiles[pos.x][pos.y]->building->buildingTemplate->type == BuildingTemplate::Barracks && pos.x == tiles[pos.x][pos.y]->building->position.x+1 && tiles[pos.x][pos.y]->building->position.y + tiles[pos.x][pos.y]->building->buildingTemplate->size.y == pos.y)
 				{
 					queue.clear();
 					break;
@@ -1195,19 +1200,16 @@ void Sieged::calcPaths()
 		ClipperLib::Polygons subject;
 		ClipperLib::Polygons result;
 
-		for (int x = 0; x < 100; x++)
+		for (auto b : buildings)
 		{
-			for (int y = 0; y < 100; y++)
-			{
-				if (!tiles[x][y]->building)
-					continue;
-				subject.push_back(blib::math::Polygon({
-					glm::vec2(x - 0.05f, y - 0.05f),
-					glm::vec2(x + 1.05f, y - 0.05f),
-					glm::vec2(x + 1.05f, y + 1.05f),
-					glm::vec2(x - 0.05f, y + 1.05f),
-				}).toClipperPolygon());
-			}
+			subject.push_back(blib::math::Polygon({
+				glm::vec2(b->position.x - 0.05f, b->position.y - 0.05f),
+				glm::vec2(b->position.x + 0.05f + b->buildingTemplate->size.x, b->position.y - 0.05f),
+				glm::vec2(b->position.x + 0.05f + b->buildingTemplate->size.x, b->position.y + 0.05f + b->buildingTemplate->size.y),
+				glm::vec2(b->position.x - 0.05f, b->position.y + 0.05f + b->buildingTemplate->size.y),
+
+			}).toClipperPolygon());
+
 		}
 
 		clipper.AddPolygons(subject, ClipperLib::ptClip);
