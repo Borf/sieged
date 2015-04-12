@@ -102,6 +102,13 @@ void Sieged::init()
 	flagModel = new blib::StaticModel("assets/models/flag.fbx.json", resourceManager, renderer);
 	flagModel->meshes[0]->material.texture = resourceManager->getResource<blib::Texture>("assets/models/flag.png");
 
+	protobot = new blib::SkelAnimatedModel("assets/models/protobot.dae.mesh.json", "assets/models/protobot.dae.skel.json", resourceManager, renderer);
+	protobot->loadAnimation("assets/models/protobot.dae..anim.json");
+	protobot->meshes[0]->material.texture = resourceManager->getResource<blib::Texture>("assets/models/protobot.png");
+	
+	protoBotState = protobot->getNewState();
+
+
 	buttons.wall = new blib::AnimatableSprite(resourceManager->getResource<blib::Texture>("assets/textures/hud/btnWall.png"), blib::math::Rectangle(glm::vec2(16, 200), 48, 48));
 	buttons.market = new blib::AnimatableSprite(resourceManager->getResource<blib::Texture>("assets/textures/hud/btnMarket.png"), blib::math::Rectangle(glm::vec2(16, 248), 48, 48));
 	buttons.flag = new blib::AnimatableSprite(resourceManager->getResource<blib::Texture>("assets/textures/hud/btnFlag.png"), blib::math::Rectangle(glm::vec2(16, 296), 48, 48));
@@ -552,6 +559,9 @@ void Sieged::update(double elapsedTime)
 			if (e)
 				if (glm::distance(e->position, s->position) < 5)
 					s->movementDirection = glm::normalize(e->position - s->position);
+			//TODO: add memory on which enemy this guy is attacking
+			// if enemy last attacked is out of range, switch to another one
+			//otherwise, try damage it
 
 			s->move(tiles, elapsedTime);
 		}
@@ -652,6 +662,9 @@ void Sieged::update(double elapsedTime)
 			}
 			if (tiles[(int)(e->position.x)][(int)(e->position.y)]->building)
 				e->position = originalPos;
+
+			e->movementDirection = e->position - originalPos;
+
 			originalPos = e->position;
 		}
 
@@ -710,6 +723,7 @@ void Sieged::update(double elapsedTime)
 
 	for (blib::AnimatableSprite* button : buttons.buttons)
 		button->update((float)elapsedTime);
+	protoBotState->update(elapsedTime);
 
 	prevMouseState = mouseState;
 }
@@ -883,12 +897,13 @@ void Sieged::drawWorld(RenderPass renderPass)
 	for (auto e : enemies)
 	{
 		glm::mat4 mat;
-		mat = glm::translate(mat, glm::vec3(e->position.x, 1.0f, e->position.y));
-		mat = glm::scale(mat, glm::vec3(0.15f, 2, 0.15f));
+		mat = glm::translate(mat, glm::vec3(e->position.x, 0.375f, e->position.y));
+		mat = glm::rotate(mat, -90.0f, glm::vec3(1, 0, 0));
+		mat = glm::rotate(mat, -glm::degrees(atan2(e->movementDirection.y, e->movementDirection.x)) + 90, glm::vec3(0, 0, 1));
+		mat = glm::scale(mat, glm::vec3(0.05f, 0.05f, 0.05f));
 		renderState.activeShader->setUniform(Uniforms::modelMatrix, mat);
 		renderState.activeShader->setUniform(Uniforms::colorMult, glm::vec4(1, 1, 1, 1));
-		//renderer->drawTriangles(cube, renderState);
-		enemyModel->draw(renderState, renderer, -1);
+		protoBotState->draw(renderState, renderer, -1, -1);
 	}
 
 	for (auto e : soldiers)
@@ -947,6 +962,9 @@ void Sieged::drawWorld(RenderPass renderPass)
 		flagModel->draw(renderState, renderer, -1);
 	}
 	
+
+
+
 
 
 

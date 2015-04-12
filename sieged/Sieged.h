@@ -6,6 +6,7 @@
 #include <blib/math.h>
 #include <blib/RenderState.h>
 #include <blib/BackgroundTask.h>
+#include <blib/SkelAnimatedModel.h>
 
 namespace blib {
 	class Texture; class Animation; class FBO; class Shader; class AnimatableSprite; class Font; class Shader; class StaticModel;
@@ -188,6 +189,10 @@ class Sieged : public blib::App
 	std::vector<std::tuple<glm::mat4, Building*, blib::StaticModel*> > wallCache;
 	blib::StaticModel* enemyModel;
 	blib::StaticModel* dudeModel;
+
+	blib::SkelAnimatedModel* protobot;
+	blib::SkelAnimatedModel::State* protoBotState;
+
 
 	blib::Font* font;
 	blib::Font* font48;
