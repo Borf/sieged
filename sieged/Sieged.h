@@ -145,14 +145,17 @@ public:
 class Archer : public Character
 {
 public:
+	Flag* flag;
 };
 
 class Soldier : public Character
 {
 public:
-	Soldier(glm::vec2 p) { this->position = p; this->speed = blib::math::randomFloat(1.25f, 1.5f); health = 5; timeLeftForAttack = 0; }
+	Soldier(glm::vec2 p) { this->position = p; this->speed = blib::math::randomFloat(1.25f, 1.5f); health = 5; timeLeftForAttack = 0; flag = NULL;  }
 	float timeLeftForAttack;
 	int health;
+
+	Flag* flag;
 };
 
 
@@ -162,7 +165,10 @@ public:
 	float timeLeftForAttack;
 	int health;
 
-	Enemy(glm::vec2 p, Flowmap* flowMap) { this->position = p; this->speed = blib::math::randomFloat(0.25f, 1.5f); timeLeftForAttack = 0; health = 5; this->flowmap = flowMap; }
+	Soldier* lastAttackedCharacter;
+	Building* lastAttackedBuilding;
+
+	Enemy(glm::vec2 p, Flowmap* flowMap) { this->position = p; this->speed = blib::math::randomFloat(0.25f, 1.5f); timeLeftForAttack = 0; health = 5; this->flowmap = flowMap; lastAttackedBuilding = NULL, lastAttackedCharacter = NULL; }
 };
 
 class Sieged : public blib::App
@@ -319,4 +325,5 @@ public:
 
 	void calcPaths();
 	void calcWalls();
+	void damageSoldier(Soldier* attackTarget, int damage);
 };

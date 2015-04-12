@@ -361,6 +361,7 @@ void Sieged::update(double elapsedTime)
 					Flag* flag = flags[0];
 
 					soldier->flowmap = &flag->flowmap;
+					soldier->flag = flag;
 					flag->soldiers.push_back(soldier);
 				}
 			}
@@ -451,6 +452,7 @@ void Sieged::update(double elapsedTime)
 					std::sort(flags.begin(), flags.end(), [](Flag* a, Flag* b) { return a->soldiers.size() < b->soldiers.size();  });
 					flags[0]->soldiers.push_back(s);
 					s->flowmap = &flags[0]->flowmap;
+					s->flag = flags[0];
 				}
 
 
@@ -528,7 +530,9 @@ void Sieged::update(double elapsedTime)
 			}
 		}
 
+		
 
+		//soldier AI
 		for (Soldier* s : soldiers)
 		{
 			s->movementDirection = s->directionFromFlowMap();
@@ -563,10 +567,72 @@ void Sieged::update(double elapsedTime)
 			// if enemy last attacked is out of range, switch to another one
 			//otherwise, try damage it
 
-			s->move(tiles, elapsedTime);
+			s->move(tiles, (float)elapsedTime);
 		}
 
+		//enemy AI
+		for (auto e : enemies)
+		{
+			e->movementDirection = e->directionFromFlowMap();
 
+			for (auto ee : enemies) // todo: use all characters here
+			{
+				if (e == ee)
+					continue;
+				glm::vec2 diff = ee->position - e->position;
+				float len = glm::length(diff);
+				if (len < 0.2f && len > 0.001f)
+				{
+					diff /= len;
+					e->position += (0.2f - len) * -0.5f * diff;
+					ee->position += (0.2f - len) * 0.5f * diff;
+				}
+			}
+			if (tiles[(int)(e->position.x)][(int)(e->position.y)]->building)
+			{
+				Building* b = tiles[(int)(e->position.x)][(int)(e->position.y)]->building;
+
+				blib::math::Rectangle buildRect(glm::vec2(b->position), b->buildingTemplate->size.x, b->buildingTemplate->size.y);
+				glm::vec2 projection = buildRect.projectClosest(e->position);
+				e->movementDirection = glm::normalize(projection - e->position);
+			}
+
+			Soldier* s = blib::linq::min<float, Soldier*>(soldiers, [e](Soldier* s) { return glm::distance(e->position, s->position); }, [](Soldier* s) { return s; });
+			Soldier* attackTarget = NULL;
+			if (s)
+			{
+				if (glm::distance(e->position, s->position) < 5) // spotting range
+					s->movementDirection = glm::normalize(e->position - s->position);
+				if (glm::distance(e->position, s->position) < 0.5f) //attack range
+					attackTarget = s;
+			}
+
+			
+			e->timeLeftForAttack -= (float)elapsedTime;
+			if (e->timeLeftForAttack <= 0)
+				e->timeLeftForAttack = 0;
+
+			if (e->lastAttackedCharacter)
+				if (glm::distance(e->lastAttackedCharacter->position, e->position) < 0.5f)
+					attackTarget = e->lastAttackedCharacter;
+
+			if (attackTarget && e->timeLeftForAttack <= 0)
+			{
+				e->timeLeftForAttack = 0.5f; // attack delay
+				damageSoldier(attackTarget, 1);
+			}
+
+			
+
+			//TODO: add memory on which enemy this guy is attacking
+			// if enemy last attacked is out of range, switch to another one
+			//otherwise, try damage it
+
+			s->move(tiles, (float)elapsedTime);
+		}
+
+		//old enemy AI
+		/*
 		for (size_t i = 0; i < enemies.size(); i++)
 		{
 			Enemy* e = enemies[i];
@@ -644,7 +710,7 @@ void Sieged::update(double elapsedTime)
 					}
 				}
 				oldPos = e->position = closestPoint;
-			}*/
+			}* /
 
 
 			for (auto ee : enemies)
@@ -666,7 +732,7 @@ void Sieged::update(double elapsedTime)
 			e->movementDirection = e->position - originalPos;
 
 			originalPos = e->position;
-		}
+		}*/
 
 
 
@@ -723,7 +789,7 @@ void Sieged::update(double elapsedTime)
 
 	for (blib::AnimatableSprite* button : buttons.buttons)
 		button->update((float)elapsedTime);
-	protoBotState->update(elapsedTime);
+	protoBotState->update((float)elapsedTime);
 
 	prevMouseState = mouseState;
 }
@@ -996,7 +1062,7 @@ void Sieged::drawWorld(RenderPass renderPass)
 		std::vector<blib::VertexP3N3C4> lineVerts;
 		for (blib::math::Polygon& e : collisionWalls)
 		{
-			for (int i = 0; i < e.size(); i++)
+			for (int i = 0; i < (int)e.size(); i++)
 			{
 				int ii = (i + 1) % e.size();
 				lineVerts.push_back(blib::VertexP3N3C4(glm::vec3(e[i].x, 0.1f, e[i].y), glm::vec3(0, 1, 0), glm::vec4(0, 0, 1, 1)));
@@ -1380,6 +1446,16 @@ void Sieged::calcWalls()
 				}
 			}
 		}
+	}
+}
+
+void Sieged::damageSoldier(Soldier* soldier, int damage)
+{
+	soldier->health--;
+	if (soldier->health <= 0)
+	{
+		blib::linq::removewhere(soldier->flag->soldiers, [soldier](Soldier* s) { return s == soldier; });
+		blib::linq::deletewhere(soldiers, [soldier](Soldier* s) { return s == soldier; });
 	}
 }
 
