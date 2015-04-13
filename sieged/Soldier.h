@@ -4,6 +4,7 @@
 #include "Character.h"
 
 class Flag;
+class Enemy;
 
 class Soldier : public Character
 {
@@ -13,4 +14,5 @@ public:
 	int health;
 
 	Flag* flag;
+	Enemy* lastAttackedCharacter;
 };

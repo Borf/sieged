@@ -566,13 +566,35 @@ void Sieged::update(double elapsedTime)
 				s->movementDirection = glm::normalize(projection - s->position);
 			}
 
-			Enemy* e = blib::linq::min<float, Enemy*>(enemies, [s](Enemy* e) { return glm::distance(e->position, s->position); }, [](Enemy* e) { return e; });
-			if (e)
-				if (glm::distance(e->position, s->position) < 5)
-					s->movementDirection = glm::normalize(e->position - s->position);
-			//TODO: add memory on which enemy this guy is attacking
-			// if enemy last attacked is out of range, switch to another one
-			//otherwise, try damage it
+
+			Enemy* attackTarget = NULL;
+			if (!enemies.empty())
+			{
+				Enemy* e = blib::linq::min<float, Enemy*>(enemies, [s](Enemy* e) { return glm::distance(e->position, s->position); }, [](Enemy* e) { return e; });
+				if (s)
+				{
+					if (glm::distance(e->position, s->position) < 5) // spotting range
+						s->movementDirection = glm::normalize(e->position - s->position);
+					if (glm::distance(e->position, s->position) < 0.5f) //attack range
+						attackTarget = e;
+				}
+			}
+
+			s->timeLeftForAttack -= (float)elapsedTime;
+			if (s->timeLeftForAttack <= 0)
+				s->timeLeftForAttack = 0;
+
+			if (s->lastAttackedCharacter)
+				if (glm::distance(s->lastAttackedCharacter->position, s->position) < 0.5f)
+					attackTarget = s->lastAttackedCharacter;
+
+			if (attackTarget && s->timeLeftForAttack <= 0)
+			{
+				s->timeLeftForAttack = 0.5f; // attack delay
+				damageEnemy(attackTarget, 1);
+			}
+
+
 
 			s->move(tiles, (float)elapsedTime);
 		}
@@ -611,7 +633,7 @@ void Sieged::update(double elapsedTime)
 				if (s)
 				{
 					if (glm::distance(e->position, s->position) < 5) // spotting range
-						s->movementDirection = glm::normalize(e->position - s->position);
+						e->movementDirection = glm::normalize(s->position - e->position);
 					if (glm::distance(e->position, s->position) < 0.5f) //attack range
 						attackTarget = s;
 				}
@@ -628,14 +650,9 @@ void Sieged::update(double elapsedTime)
 			if (attackTarget && e->timeLeftForAttack <= 0)
 			{
 				e->timeLeftForAttack = 0.5f; // attack delay
-				damageSoldier(attackTarget, 1);
+				e->lastAttackedCharacter = attackTarget;
+					damageSoldier(attackTarget, 1);
 			}
-
-			
-
-			//TODO: add memory on which enemy this guy is attacking
-			// if enemy last attacked is out of range, switch to another one
-			//otherwise, try damage it
 
 			e->move(tiles, (float)elapsedTime);
 		}
@@ -1463,8 +1480,24 @@ void Sieged::damageSoldier(Soldier* soldier, int damage)
 	soldier->health--;
 	if (soldier->health <= 0)
 	{
+		for (auto e : enemies)
+			if (e->lastAttackedCharacter == soldier)
+				e->lastAttackedCharacter = NULL;
+
 		blib::linq::removewhere(soldier->flag->soldiers, [soldier](Soldier* s) { return s == soldier; });
 		blib::linq::deletewhere(soldiers, [soldier](Soldier* s) { return s == soldier; });
+	}
+}
+
+void Sieged::damageEnemy(Enemy* enemy, int damage)
+{
+	enemy->health--;
+	if (enemy->health <= 0)
+	{
+		for (auto s : soldiers)
+			if (s->lastAttackedCharacter == enemy)
+				s->lastAttackedCharacter = NULL;
+		blib::linq::deletewhere(enemies, [enemy](Enemy* e) { return e == enemy; });
 	}
 }
 

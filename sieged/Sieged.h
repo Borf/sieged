@@ -187,4 +187,5 @@ public:
 	void calcPaths();
 	void calcWalls();
 	void damageSoldier(Soldier* attackTarget, int damage);
+	void damageEnemy(Enemy* enemy, int damage);
 };

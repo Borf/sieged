@@ -9,5 +9,6 @@ Soldier::Soldier(glm::vec2 p)
 	health = 5; 
 	timeLeftForAttack = 0; 
 	flag = NULL;
+	lastAttackedCharacter = NULL;
 }
 
