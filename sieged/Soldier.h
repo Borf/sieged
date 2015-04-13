@@ -3,6 +3,8 @@
 #include <glm/glm.hpp>
 #include "Character.h"
 
+#include <blib/SkelAnimatedModel.h>
+
 class Flag;
 class Enemy;
 
@@ -15,4 +17,7 @@ public:
 
 	Flag* flag;
 	Enemy* lastAttackedCharacter;
+
+
+	blib::SkelAnimatedModel::State* modelState;
 };

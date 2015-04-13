@@ -6,7 +6,6 @@ attribute vec3 a_normal;
 
 uniform mat4 projectionMatrix;
 uniform mat4 cameraMatrix;
-uniform mat4 modelMatrix;
 
 uniform mat4 shadowCameraMatrix;
 uniform mat4 shadowProjectionMatrix;
@@ -25,10 +24,15 @@ mat4 biasMatrix = mat4(
 0.5, 0.5, 0.5, 1.0
 );
 
+
+mat4 getModelMatrix();
+
 void main()
 {
 
 	texcoord = a_texcoord;
+
+	mat4 modelMatrix = getModelMatrix();
 
 	mat3 normalMatrix = mat3(modelMatrix);
 	normalMatrix = transpose(inverse(normalMatrix));

@@ -100,20 +100,21 @@ void Sieged::init()
 		wallModels[i]->meshes[0]->material.texture = resourceManager->getResource<blib::Texture>("assets/models/wall"+std::to_string(i+1)+".png");
 	}
 
-	enemyModel = new blib::StaticModel("assets/models/cube.fbx.json", resourceManager, renderer);
-	enemyModel->meshes[0]->material.texture = resourceManager->getResource<blib::Texture>("assets/models/cube.png");
-
-	dudeModel= new blib::StaticModel("assets/models/cube.fbx.json", resourceManager, renderer);
-	dudeModel->meshes[0]->material.texture = resourceManager->getResource<blib::Texture>("assets/models/cube.png");
-
 	flagModel = new blib::StaticModel("assets/models/flag.fbx.json", resourceManager, renderer);
 	flagModel->meshes[0]->material.texture = resourceManager->getResource<blib::Texture>("assets/models/flag.png");
 
 	protobot = new blib::SkelAnimatedModel("assets/models/protobot.dae.mesh.json", "assets/models/protobot.dae.skel.json", resourceManager, renderer);
 	protobot->loadAnimation("assets/models/protobot.dae..anim.json");
 	protobot->meshes[0]->material.texture = resourceManager->getResource<blib::Texture>("assets/models/protobot.png");
-	
+
 	protoBotState = protobot->getNewState();
+
+	soldierModel = new blib::SkelAnimatedModel("assets/models/testgastje.dae.mesh.json", "assets/models/testgastje.dae.skel.json", resourceManager, renderer);
+	soldierModel->loadAnimation("assets/models/testgastje.dae.walk.anim.json");
+	//soldierModel->meshes[0]->material.texture = resourceManager->getResource<blib::Texture>("assets/models/protobot.png");
+
+	soldierState = soldierModel->getNewState();
+
 
 
 	buttons.wall = new blib::AnimatableSprite(resourceManager->getResource<blib::Texture>("assets/textures/hud/btnWall.png"), blib::math::Rectangle(glm::vec2(16, 200), 48, 48));
@@ -186,6 +187,7 @@ void Sieged::init()
 
 
 	backgroundShader = resourceManager->getResource<blib::Shader>("simple");
+	backgroundShader->addVertexShader("getmatrix.static");
 	backgroundShader->bindAttributeLocation("a_position", 0);
 	backgroundShader->bindAttributeLocation("a_texcoord", 1);
 	backgroundShader->bindAttributeLocation("a_normal", 2);
@@ -359,6 +361,7 @@ void Sieged::update(double elapsedTime)
 				Building* barracks = blib::linq::firstOrDefault<Building*>(buildings, [](Building* b) { return b->buildingTemplate->type == BuildingTemplate::Barracks; });
 				assert(barracks);
 				Soldier* soldier = new Soldier(glm::vec2(barracks->position) + glm::vec2(1.5, barracks->buildingTemplate->size.y + 0.1f));
+				soldier->modelState = soldierModel->getNewState();
 				soldier->flowmap = NULL;
 				soldiers.push_back(soldier);
 				
@@ -595,7 +598,7 @@ void Sieged::update(double elapsedTime)
 			}
 
 
-
+			s->modelState->update((float)elapsedTime);
 			s->move(tiles, (float)elapsedTime);
 		}
 
@@ -816,6 +819,7 @@ void Sieged::update(double elapsedTime)
 	for (blib::AnimatableSprite* button : buttons.buttons)
 		button->update((float)elapsedTime);
 	protoBotState->update((float)elapsedTime);
+	soldierState->update((float)elapsedTime);
 
 	prevMouseState = mouseState;
 }
@@ -889,7 +893,8 @@ void Sieged::draw()
 	{
 		Enemy* e = enemies[i];
 		glm::vec3 position = glm::project(glm::vec3(e->position.x, 1, e->position.y), cameraMatrix, projectionMatrix, glm::uvec4(0, 0, 1920, 1079));
-		spriteBatch->draw(font, std::to_string(i), blib::math::easyMatrix(glm::vec2(position.x, 1079 - position.y), 0, 2));
+		if (position.z < 1 && position.z > 0)
+			spriteBatch->draw(font, std::to_string(i), blib::math::easyMatrix(glm::vec2(position.x, 1079 - position.y), 0, 2));
 	}
 
 
@@ -998,17 +1003,18 @@ void Sieged::drawWorld(RenderPass renderPass)
 		protoBotState->draw(renderState, renderer, -1, -1);
 	}
 
-	for (auto e : soldiers)
+	for (auto s : soldiers)
 	{
 		glm::mat4 mat;
-		mat = glm::translate(mat, glm::vec3(e->position.x, 1.0f, e->position.y));
-		mat = glm::scale(mat, glm::vec3(0.15f, 3, 0.15f));
+		mat = glm::translate(mat, glm::vec3(s->position.x, 0.0f, s->position.y));
+		mat = glm::rotate(mat, -90.0f, glm::vec3(1, 0, 0));
+		mat = glm::rotate(mat, -glm::degrees(atan2(s->movementDirection.y, s->movementDirection.x)) + 90.0f, glm::vec3(0, 0, 1));
+		mat = glm::scale(mat, glm::vec3(0.15f, 0.15f, 0.15f));
 		renderState.activeShader->setUniform(Uniforms::modelMatrix, mat);
 		renderState.activeShader->setUniform(Uniforms::colorMult, glm::vec4(1, 1, 1, 1));
 		//renderer->drawTriangles(cube, renderState);
-		enemyModel->draw(renderState, renderer, -1);
+		s->modelState->draw(renderState, renderer, -1, -1);
 	}
-
 
 	for (auto b : buildings)
 	{
@@ -1065,21 +1071,24 @@ void Sieged::drawWorld(RenderPass renderPass)
 		if (fabs(mousePos3d.y) < 1)
 		{
 			glm::ivec2 pos(mousePos3d.x - draggingBuilding->size.x / 2, mousePos3d.z - draggingBuilding->size.y / 2);
-			bool ok = true;
-			for (int x = 0; x < draggingBuilding->size.x; x++)
-				for (int y = 0; y < draggingBuilding->size.y; y++)
-					if (tiles[pos.x + x][pos.y + y]->building)
-						ok = false;
+			if (pos.x >= 0 && pos.y >= 0) // TODO: add upper bound check
+			{
+				bool ok = true;
+				for (int x = 0; x < draggingBuilding->size.x; x++)
+					for (int y = 0; y < draggingBuilding->size.y; y++)
+						if (tiles[pos.x + x][pos.y + y]->building)
+							ok = false;
 
-			glm::mat4 mat;
-			mat = glm::translate(mat, glm::vec3((int)mousePos3d.x + (draggingBuilding->size.x % 2 == 0 ? 0 : 0.5f), 0, (int)mousePos3d.z + (draggingBuilding->size.y % 2 == 0 ? 0 : 0.5f)));
-			mat = glm::rotate(mat, 180.0f, glm::vec3(0, 1, 0));
-			renderState.activeShader->setUniform(Uniforms::modelMatrix, mat);
-			if (ok)
-				renderState.activeShader->setUniform(Uniforms::colorMult, glm::vec4(1, 1, 1, 0.5f));
-			else
-				renderState.activeShader->setUniform(Uniforms::colorMult, glm::vec4(1, 0, 0, 0.5f));
-			draggingBuilding->model->draw(renderState, renderer, -1);
+				glm::mat4 mat;
+				mat = glm::translate(mat, glm::vec3((int)mousePos3d.x + (draggingBuilding->size.x % 2 == 0 ? 0 : 0.5f), 0, (int)mousePos3d.z + (draggingBuilding->size.y % 2 == 0 ? 0 : 0.5f)));
+				mat = glm::rotate(mat, 180.0f, glm::vec3(0, 1, 0));
+				renderState.activeShader->setUniform(Uniforms::modelMatrix, mat);
+				if (ok)
+					renderState.activeShader->setUniform(Uniforms::colorMult, glm::vec4(1, 1, 1, 0.5f));
+				else
+					renderState.activeShader->setUniform(Uniforms::colorMult, glm::vec4(1, 0, 0, 0.5f));
+				draggingBuilding->model->draw(renderState, renderer, -1);
+			}
 		}
 	}
 

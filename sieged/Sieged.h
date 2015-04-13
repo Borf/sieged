@@ -54,11 +54,11 @@ class Sieged : public blib::App
 
 
 	std::vector<std::tuple<glm::mat4, Building*, blib::StaticModel*> > wallCache;
-	blib::StaticModel* enemyModel;
-	blib::StaticModel* dudeModel;
-
+	
 	blib::SkelAnimatedModel* protobot;
 	blib::SkelAnimatedModel::State* protoBotState;
+	blib::SkelAnimatedModel* soldierModel;
+	blib::SkelAnimatedModel::State* soldierState;
 
 
 	blib::Font* font;

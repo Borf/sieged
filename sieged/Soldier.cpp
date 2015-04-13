@@ -10,5 +10,7 @@ Soldier::Soldier(glm::vec2 p)
 	timeLeftForAttack = 0; 
 	flag = NULL;
 	lastAttackedCharacter = NULL;
+
+	modelState = NULL;
 }
 
