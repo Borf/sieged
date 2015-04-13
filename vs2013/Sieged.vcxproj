@@ -56,11 +56,13 @@
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ObjectFileName>$(IntDir)\%(RelativeDir)\</ObjectFileName>
       <AdditionalIncludeDirectories>../blib;../blib/externals;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <BasicRuntimeChecks>Default</BasicRuntimeChecks>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>$(OutDir)</AdditionalLibraryDirectories>
+      <IgnoreSpecificDefaultLibraries>libcmt.lib</IgnoreSpecificDefaultLibraries>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -85,11 +87,29 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\sieged\Archer.cpp" />
+    <ClCompile Include="..\sieged\Building.cpp" />
+    <ClCompile Include="..\sieged\BuildingTemplate.cpp" />
+    <ClCompile Include="..\sieged\Character.cpp" />
+    <ClCompile Include="..\sieged\Enemy.cpp" />
+    <ClCompile Include="..\sieged\Flag.cpp" />
+    <ClCompile Include="..\sieged\FlowMap.cpp" />
     <ClCompile Include="..\sieged\main.cpp" />
     <ClCompile Include="..\sieged\Sieged.cpp" />
+    <ClCompile Include="..\sieged\Soldier.cpp" />
+    <ClCompile Include="..\sieged\Tile.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\sieged\Archer.h" />
+    <ClInclude Include="..\sieged\Building.h" />
+    <ClInclude Include="..\sieged\BuildingTemplate.h" />
+    <ClInclude Include="..\sieged\Character.h" />
+    <ClInclude Include="..\sieged\Enemy.h" />
+    <ClInclude Include="..\sieged\Flag.h" />
+    <ClInclude Include="..\sieged\FlowMap.h" />
     <ClInclude Include="..\sieged\Sieged.h" />
+    <ClInclude Include="..\sieged\Soldier.h" />
+    <ClInclude Include="..\sieged\Tile.h" />
   </ItemGroup>
   <ItemGroup>
     <CustomBuild Include="..\assets\models\townhall.fbx">
@@ -252,6 +272,13 @@
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">%(FullPath).json</Outputs>
       <Command Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">"$(OutDir)\ModelConvert.exe" "%(FullPath)" "%(FullPath).json"</Command>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">%(FullPath).json</Outputs>
+    </CustomBuild>
+    <CustomBuild Include="..\assets\models\protobot.dae">
+      <FileType>Document</FileType>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">"$(OutDir)\ModelConvert.exe" "%(FullPath)" "%(FullPath).json"</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">%(FullPath).mesh.json</Outputs>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">"$(OutDir)\ModelConvert.exe" "%(FullPath)" "%(FullPath).json"</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">%(FullPath).mesh.json</Outputs>
     </CustomBuild>
     <None Include="..\assets\shaders\gl\simple.frag" />
     <None Include="..\assets\shaders\gl\simple.vert" />

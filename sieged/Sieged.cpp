@@ -4,6 +4,13 @@
 #include <fstream>
 #include <set>
 
+#include "Soldier.h"
+#include "Enemy.h"
+#include "Building.h"
+#include "BuildingTemplate.h"
+#include "Tile.h"
+#include "Flag.h"
+
 #include <blib/Util.h>
 #include <blib/Renderer.h>
 #include <blib/ResourceManager.h>
@@ -597,16 +604,18 @@ void Sieged::update(double elapsedTime)
 				e->movementDirection = glm::normalize(projection - e->position);
 			}
 
-			Soldier* s = blib::linq::min<float, Soldier*>(soldiers, [e](Soldier* s) { return glm::distance(e->position, s->position); }, [](Soldier* s) { return s; });
 			Soldier* attackTarget = NULL;
-			if (s)
+			if (!soldiers.empty())
 			{
-				if (glm::distance(e->position, s->position) < 5) // spotting range
-					s->movementDirection = glm::normalize(e->position - s->position);
-				if (glm::distance(e->position, s->position) < 0.5f) //attack range
-					attackTarget = s;
+				Soldier* s = blib::linq::min<float, Soldier*>(soldiers, [e](Soldier* s) { return glm::distance(e->position, s->position); }, [](Soldier* s) { return s; });
+				if (s)
+				{
+					if (glm::distance(e->position, s->position) < 5) // spotting range
+						s->movementDirection = glm::normalize(e->position - s->position);
+					if (glm::distance(e->position, s->position) < 0.5f) //attack range
+						attackTarget = s;
+				}
 			}
-
 			
 			e->timeLeftForAttack -= (float)elapsedTime;
 			if (e->timeLeftForAttack <= 0)
@@ -628,7 +637,7 @@ void Sieged::update(double elapsedTime)
 			// if enemy last attacked is out of range, switch to another one
 			//otherwise, try damage it
 
-			s->move(tiles, (float)elapsedTime);
+			e->move(tiles, (float)elapsedTime);
 		}
 
 		//old enemy AI
