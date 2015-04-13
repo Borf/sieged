@@ -166,6 +166,9 @@ class Sieged : public blib::App
 		shadowProjectionMatrix,
 		shadowCameraMatrix,
 		lightDirection,
+
+
+		boneMatrices,
 	};
 	glm::mat4 cameraMatrix;
 	glm::mat4 projectionMatrix;

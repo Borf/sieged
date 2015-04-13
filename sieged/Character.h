@@ -13,6 +13,7 @@ class Character
 public:
 	glm::vec2 position;
 	glm::vec2 movementDirection;
+	glm::vec2 movementTarget;
 	float speed;
 	Flowmap* flowmap;
 

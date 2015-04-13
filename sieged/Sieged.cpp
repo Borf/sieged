@@ -203,10 +203,36 @@ void Sieged::init()
 	backgroundShader->setUniformName(Uniforms::shadowCameraMatrix, "shadowCameraMatrix", blib::Shader::UniformType::Mat4);
 	backgroundShader->setUniformName(Uniforms::lightDirection, "lightDirection", blib::Shader::UniformType::Vec3);
 	backgroundShader->setUniformName(Uniforms::shadowFac, "shadowFac", blib::Shader::UniformType::Float);
-	
+
 	backgroundShader->finishUniformSetup();
 	backgroundShader->setUniform(Uniforms::s_texture, 0);
 	backgroundShader->setUniform(Uniforms::s_shadowmap, 1);
+
+	characterShader = resourceManager->getResource<blib::Shader>("simple");
+	characterShader->addVertexShader("getmatrix.animate");
+	characterShader->bindAttributeLocation("a_position", 0);
+	characterShader->bindAttributeLocation("a_texcoord", 1);
+	characterShader->bindAttributeLocation("a_normal", 2);
+	characterShader->bindAttributeLocation("a_boneIds", 3);
+	characterShader->bindAttributeLocation("a_boneWeights", 4);
+	characterShader->setUniformName(Uniforms::ProjectionMatrix, "projectionMatrix", blib::Shader::UniformType::Mat4);
+	characterShader->setUniformName(Uniforms::CameraMatrix, "cameraMatrix", blib::Shader::UniformType::Mat4);
+	characterShader->setUniformName(Uniforms::modelMatrix, "modelMatrix", blib::Shader::UniformType::Mat4);
+	characterShader->setUniformName(Uniforms::colorMult, "colorMult", blib::Shader::UniformType::Vec4);
+	characterShader->setUniformName(Uniforms::s_texture, "s_texture", blib::Shader::UniformType::Int);
+	characterShader->setUniformName(Uniforms::s_shadowmap, "s_shadowmap", blib::Shader::UniformType::Int);
+	characterShader->setUniformName(Uniforms::buildFactor, "buildFactor", blib::Shader::UniformType::Float);
+	characterShader->setUniformName(Uniforms::location, "location", blib::Shader::UniformType::Vec2);
+	characterShader->setUniformName(Uniforms::shadowProjectionMatrix, "shadowProjectionMatrix", blib::Shader::UniformType::Mat4);
+	characterShader->setUniformName(Uniforms::shadowCameraMatrix, "shadowCameraMatrix", blib::Shader::UniformType::Mat4);
+	characterShader->setUniformName(Uniforms::lightDirection, "lightDirection", blib::Shader::UniformType::Vec3);
+	characterShader->setUniformName(Uniforms::shadowFac, "shadowFac", blib::Shader::UniformType::Float);
+	characterShader->setUniformArray(Uniforms::boneMatrices, "boneMatrices", 50, blib::Shader::Mat4);
+
+	characterShader->finishUniformSetup();
+	characterShader->setUniform(Uniforms::s_texture, 0);
+	characterShader->setUniform(Uniforms::s_shadowmap, 1);
+
 
 	shadowmapShader = resourceManager->getResource<blib::Shader>("shadowmap");
 	shadowmapShader->bindAttributeLocation("a_position", 0);
@@ -217,6 +243,8 @@ void Sieged::init()
 	shadowmapShader->setUniformName(Uniforms::buildFactor, "buildFactor", blib::Shader::UniformType::Float);
 	shadowmapShader->setUniformName(Uniforms::location, "location", blib::Shader::UniformType::Vec2);
 	shadowmapShader->finishUniformSetup();
+
+
 
 
 	renderState.depthTest = true;
@@ -362,6 +390,8 @@ void Sieged::update(double elapsedTime)
 				assert(barracks);
 				Soldier* soldier = new Soldier(glm::vec2(barracks->position) + glm::vec2(1.5, barracks->buildingTemplate->size.y + 0.1f));
 				soldier->modelState = soldierModel->getNewState();
+				soldier->modelState->playAnimation("idle");
+				soldier->modelState->update(0.01f);
 				soldier->flowmap = NULL;
 				soldiers.push_back(soldier);
 				
@@ -545,8 +575,11 @@ void Sieged::update(double elapsedTime)
 		//soldier AI
 		for (Soldier* s : soldiers)
 		{
+			s->modelState->update((float)elapsedTime);
+			if (!s->flag)
+				continue;
 			s->movementDirection = s->directionFromFlowMap();
-
+			s->movementTarget = glm::vec2(s->flag->position) + glm::vec2(0.5f, 0.5f);
 			for (auto ee : soldiers)
 			{
 				if (s == ee)
@@ -576,8 +609,11 @@ void Sieged::update(double elapsedTime)
 				Enemy* e = blib::linq::min<float, Enemy*>(enemies, [s](Enemy* e) { return glm::distance(e->position, s->position); }, [](Enemy* e) { return e; });
 				if (s)
 				{
-					if (glm::distance(e->position, s->position) < 5) // spotting range
+					if (glm::distance(e->position, s->position) < 5 && glm::distance(e->position, s->position) > 0.001f) // spotting range
+					{
 						s->movementDirection = glm::normalize(e->position - s->position);
+						s->movementTarget = e->position; //TODO: make him stop in front of him
+					}
 					if (glm::distance(e->position, s->position) < 0.5f) //attack range
 						attackTarget = e;
 				}
@@ -597,10 +633,22 @@ void Sieged::update(double elapsedTime)
 				damageEnemy(attackTarget, 1);
 			}
 
-
-			s->modelState->update((float)elapsedTime);
+			glm::vec2 oldPos = s->position;
 			s->move(tiles, (float)elapsedTime);
+			float moved = glm::distance(oldPos, s->position);
+			if (moved < 0.1f * elapsedTime * s->speed)
+			{
+				s->modelState->playAnimation("idle");
+				s->modelState->stopAnimation("walk");
+			}
+			else
+			{
+				s->modelState->playAnimation("walk");
+				s->modelState->stopAnimation("idle");
+			}
 		}
+
+
 
 		//enemy AI
 		for (auto e : enemies)
@@ -626,7 +674,8 @@ void Sieged::update(double elapsedTime)
 
 				blib::math::Rectangle buildRect(glm::vec2(b->position), b->buildingTemplate->size.x, b->buildingTemplate->size.y);
 				glm::vec2 projection = buildRect.projectClosest(e->position);
-				e->movementDirection = glm::normalize(projection - e->position);
+				if (glm::length(projection - e->position) > 0.001f)
+					e->movementDirection = glm::normalize(projection - e->position);
 			}
 
 			Soldier* attackTarget = NULL;
@@ -635,7 +684,7 @@ void Sieged::update(double elapsedTime)
 				Soldier* s = blib::linq::min<float, Soldier*>(soldiers, [e](Soldier* s) { return glm::distance(e->position, s->position); }, [](Soldier* s) { return s; });
 				if (s)
 				{
-					if (glm::distance(e->position, s->position) < 5) // spotting range
+					if (glm::distance(e->position, s->position) < 5 && glm::distance(e->position, s->position) >  0.001f) // spotting range
 						e->movementDirection = glm::normalize(s->position - e->position);
 					if (glm::distance(e->position, s->position) < 0.5f) //attack range
 						attackTarget = s;
@@ -876,12 +925,19 @@ void Sieged::draw()
 	renderState.cullFaces = blib::RenderState::CullFaces::CCW;
 	renderState.activeTexture[1] = shadowMap;
 	renderState.activeShader = backgroundShader;
-	renderState.activeShader->setUniform(Uniforms::shadowCameraMatrix, shadowCameraMatrix);
-	renderState.activeShader->setUniform(Uniforms::shadowProjectionMatrix, shadowProjectionMatrix);
-	renderState.activeShader->setUniform(Uniforms::lightDirection, lightAngle);
+	backgroundShader->setUniform(Uniforms::shadowCameraMatrix, shadowCameraMatrix);
+	backgroundShader->setUniform(Uniforms::shadowProjectionMatrix, shadowProjectionMatrix);
+	backgroundShader->setUniform(Uniforms::lightDirection, lightAngle);
 
-	renderState.activeShader->setUniform(Uniforms::CameraMatrix, cameraMatrix);
-	renderState.activeShader->setUniform(Uniforms::ProjectionMatrix, projectionMatrix);
+	backgroundShader->setUniform(Uniforms::CameraMatrix, cameraMatrix);
+	backgroundShader->setUniform(Uniforms::ProjectionMatrix, projectionMatrix);
+
+	characterShader->setUniform(Uniforms::shadowCameraMatrix, shadowCameraMatrix);
+	characterShader->setUniform(Uniforms::shadowProjectionMatrix, shadowProjectionMatrix);
+	characterShader->setUniform(Uniforms::lightDirection, lightAngle);
+
+	characterShader->setUniform(Uniforms::CameraMatrix, cameraMatrix);
+	characterShader->setUniform(Uniforms::ProjectionMatrix, projectionMatrix);
 	drawWorld(RenderPass::Final);
 
 
@@ -987,34 +1043,41 @@ void Sieged::drawWorld(RenderPass renderPass)
 	if (renderPass == RenderPass::Final)
 		renderer->unproject(glm::vec2(mouseState.position), &mousePos3d, NULL, cameraMatrix, projectionMatrix);
 
-
-	//renderState.activeShader->setUniform(Uniforms::shadowFac, 0.0f);
-
+	if (renderPass == RenderPass::Final)
+	{
+		renderState.activeShader = characterShader;
+		renderState.activeShader->setUniform(Uniforms::modelMatrix, glm::mat4());
+		renderState.activeShader->setUniform(Uniforms::colorMult, glm::vec4(1, 1, 1, 1));
+		renderState.activeShader->setUniform(Uniforms::buildFactor, 1.0f);
+		renderState.activeShader->setUniform(Uniforms::shadowFac, 1.0f);
+	}
 
 	for (auto e : enemies)
 	{
 		glm::mat4 mat;
-		mat = glm::translate(mat, glm::vec3(e->position.x, 0.375f, e->position.y));
-		mat = glm::rotate(mat, -90.0f, glm::vec3(1, 0, 0));
-		mat = glm::rotate(mat, -glm::degrees(atan2(e->movementDirection.y, e->movementDirection.x)) + 90, glm::vec3(0, 0, 1));
+		mat = glm::translate(mat, glm::vec3(e->position.x, 0.0f, e->position.y));
+		//mat = glm::rotate(mat, -90.0f, glm::vec3(1, 0, 0));
+		mat = glm::rotate(mat, -glm::degrees(atan2(e->movementDirection.y, e->movementDirection.x)) + 90, glm::vec3(0, 1, 0));
 		mat = glm::scale(mat, glm::vec3(0.05f, 0.05f, 0.05f));
 		renderState.activeShader->setUniform(Uniforms::modelMatrix, mat);
 		renderState.activeShader->setUniform(Uniforms::colorMult, glm::vec4(1, 1, 1, 1));
-		protoBotState->draw(renderState, renderer, -1, -1);
+		protoBotState->draw(renderState, renderer, -1, renderPass == RenderPass::Final ? (int)Uniforms::boneMatrices : -1);
 	}
 
 	for (auto s : soldiers)
 	{
 		glm::mat4 mat;
 		mat = glm::translate(mat, glm::vec3(s->position.x, 0.0f, s->position.y));
-		mat = glm::rotate(mat, -90.0f, glm::vec3(1, 0, 0));
-		mat = glm::rotate(mat, -glm::degrees(atan2(s->movementDirection.y, s->movementDirection.x)) + 90.0f, glm::vec3(0, 0, 1));
+		//mat = glm::rotate(mat, -90.0f, glm::vec3(1, 0, 0));
+		mat = glm::rotate(mat, -glm::degrees(atan2(s->movementDirection.y, s->movementDirection.x)) + 90.0f, glm::vec3(0, 1, 0));
 		mat = glm::scale(mat, glm::vec3(0.15f, 0.15f, 0.15f));
 		renderState.activeShader->setUniform(Uniforms::modelMatrix, mat);
 		renderState.activeShader->setUniform(Uniforms::colorMult, glm::vec4(1, 1, 1, 1));
 		//renderer->drawTriangles(cube, renderState);
-		s->modelState->draw(renderState, renderer, -1, -1);
+		s->modelState->draw(renderState, renderer, -1, renderPass == RenderPass::Final ? (int)Uniforms::boneMatrices : -1);
 	}
+	if (renderPass == RenderPass::Final)
+		renderState.activeShader = backgroundShader;
 
 	for (auto b : buildings)
 	{
@@ -1644,9 +1707,9 @@ glm::vec2 Character::directionFromFlowMap()
 		dir.y = 1;
 
 
-	if ((direction & Left) == 0 && (direction & Right) == 0)
+	if ((direction & Left) == 0 && (direction & Right) == 0 && fabs(tileCenter.x - position.x) > 0.1f)
 		dir.x = glm::normalize(tileCenter.x - position.x);
-	if ((direction & Down) == 0 && (direction & Up) == 0)
+	if ((direction & Down) == 0 && (direction & Up) == 0 && fabs(tileCenter.y - position.y) > 0.1f)
 		dir.y = glm::normalize(tileCenter.y - position.y);
 
 	return dir;
@@ -1654,6 +1717,11 @@ glm::vec2 Character::directionFromFlowMap()
 
 void Character::move(TileMap& tiles, float elapsedTime)
 {
+	if (glm::distance(position, movementTarget) < glm::length(movementDirection) * elapsedTime * speed)
+	{
+		position = movementTarget;
+		return;
+	}
 	glm::vec2 originalPos;
 
 	bool ignoreCollision = false;
