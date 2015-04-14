@@ -234,16 +234,30 @@ void Sieged::init()
 	characterShader->setUniform(Uniforms::s_shadowmap, 1);
 
 
-	shadowmapShader = resourceManager->getResource<blib::Shader>("shadowmap");
-	shadowmapShader->bindAttributeLocation("a_position", 0);
-	shadowmapShader->bindAttributeLocation("a_texcoord", 1);
-	shadowmapShader->setUniformName(Uniforms::ProjectionMatrix, "projectionMatrix", blib::Shader::UniformType::Mat4);
-	shadowmapShader->setUniformName(Uniforms::CameraMatrix, "cameraMatrix", blib::Shader::UniformType::Mat4);
-	shadowmapShader->setUniformName(Uniforms::modelMatrix, "modelMatrix", blib::Shader::UniformType::Mat4);
-	shadowmapShader->setUniformName(Uniforms::buildFactor, "buildFactor", blib::Shader::UniformType::Float);
-	shadowmapShader->setUniformName(Uniforms::location, "location", blib::Shader::UniformType::Vec2);
-	shadowmapShader->finishUniformSetup();
+	shadowmapBackgroundShader = resourceManager->getResource<blib::Shader>("shadowmap");
+	shadowmapBackgroundShader->addVertexShader("getmatrix.static");
+	shadowmapBackgroundShader->bindAttributeLocation("a_position", 0);
+	shadowmapBackgroundShader->bindAttributeLocation("a_texcoord", 1);
+	shadowmapBackgroundShader->setUniformName(Uniforms::ProjectionMatrix, "projectionMatrix", blib::Shader::UniformType::Mat4);
+	shadowmapBackgroundShader->setUniformName(Uniforms::CameraMatrix, "cameraMatrix", blib::Shader::UniformType::Mat4);
+	shadowmapBackgroundShader->setUniformName(Uniforms::modelMatrix, "modelMatrix", blib::Shader::UniformType::Mat4);
+	shadowmapBackgroundShader->setUniformName(Uniforms::buildFactor, "buildFactor", blib::Shader::UniformType::Float);
+	shadowmapBackgroundShader->setUniformName(Uniforms::location, "location", blib::Shader::UniformType::Vec2);
+	shadowmapBackgroundShader->finishUniformSetup();
 
+	shadowmapCharacterShader = resourceManager->getResource<blib::Shader>("shadowmap");
+	shadowmapCharacterShader->addVertexShader("getmatrix.animate");
+	shadowmapCharacterShader->bindAttributeLocation("a_position", 0);
+	shadowmapCharacterShader->bindAttributeLocation("a_texcoord", 1);
+	shadowmapCharacterShader->bindAttributeLocation("a_boneIds", 3);
+	shadowmapCharacterShader->bindAttributeLocation("a_boneWeights", 4);
+	shadowmapCharacterShader->setUniformName(Uniforms::ProjectionMatrix, "projectionMatrix", blib::Shader::UniformType::Mat4);
+	shadowmapCharacterShader->setUniformName(Uniforms::CameraMatrix, "cameraMatrix", blib::Shader::UniformType::Mat4);
+	shadowmapCharacterShader->setUniformName(Uniforms::modelMatrix, "modelMatrix", blib::Shader::UniformType::Mat4);
+	shadowmapCharacterShader->setUniformName(Uniforms::buildFactor, "buildFactor", blib::Shader::UniformType::Float);
+	shadowmapCharacterShader->setUniformName(Uniforms::location, "location", blib::Shader::UniformType::Vec2);
+	shadowmapCharacterShader->setUniformArray(Uniforms::boneMatrices, "boneMatrices", 50, blib::Shader::Mat4);
+	shadowmapCharacterShader->finishUniformSetup();
 
 
 
@@ -908,9 +922,12 @@ void Sieged::draw()
 	glm::mat4 shadowCameraMatrix = glm::lookAt(lightAngle + glm::vec3(50,0,50), glm::vec3(50, 0, 50), glm::vec3(0, 1, 0));
 
 	renderState.cullFaces = blib::RenderState::CullFaces::CW;
-	renderState.activeShader = shadowmapShader;
-	renderState.activeShader->setUniform(Uniforms::CameraMatrix, shadowCameraMatrix);
-	renderState.activeShader->setUniform(Uniforms::ProjectionMatrix, shadowProjectionMatrix);
+	renderState.activeShader = shadowmapBackgroundShader;
+	shadowmapBackgroundShader->setUniform(Uniforms::CameraMatrix, shadowCameraMatrix);
+	shadowmapBackgroundShader->setUniform(Uniforms::ProjectionMatrix, shadowProjectionMatrix);
+
+	shadowmapCharacterShader->setUniform(Uniforms::CameraMatrix, shadowCameraMatrix);
+	shadowmapCharacterShader->setUniform(Uniforms::ProjectionMatrix, shadowProjectionMatrix);
 
 	renderState.activeFbo = shadowMap;
 	renderer->setViewPort(0, 0, shadowMap->width, shadowMap->height);
@@ -950,7 +967,7 @@ void Sieged::draw()
 		Enemy* e = enemies[i];
 		glm::vec3 position = glm::project(glm::vec3(e->position.x, 1, e->position.y), cameraMatrix, projectionMatrix, glm::uvec4(0, 0, 1920, 1079));
 		if (position.z < 1 && position.z > 0)
-			spriteBatch->draw(font, std::to_string(i), blib::math::easyMatrix(glm::vec2(position.x, 1079 - position.y), 0, 2));
+			spriteBatch->draw(font, std::to_string(i) + " -> " + std::to_string(e->health), blib::math::easyMatrix(glm::vec2(position.x, 1079 - position.y), 0, 2));
 	}
 
 
@@ -1043,14 +1060,11 @@ void Sieged::drawWorld(RenderPass renderPass)
 	if (renderPass == RenderPass::Final)
 		renderer->unproject(glm::vec2(mouseState.position), &mousePos3d, NULL, cameraMatrix, projectionMatrix);
 
-	if (renderPass == RenderPass::Final)
-	{
-		renderState.activeShader = characterShader;
-		renderState.activeShader->setUniform(Uniforms::modelMatrix, glm::mat4());
-		renderState.activeShader->setUniform(Uniforms::colorMult, glm::vec4(1, 1, 1, 1));
-		renderState.activeShader->setUniform(Uniforms::buildFactor, 1.0f);
-		renderState.activeShader->setUniform(Uniforms::shadowFac, 1.0f);
-	}
+	renderState.activeShader = renderPass == RenderPass::Final ? characterShader : shadowmapCharacterShader;
+
+	renderState.activeShader->setUniform(Uniforms::modelMatrix, glm::mat4());
+	renderState.activeShader->setUniform(Uniforms::buildFactor, 1.0f);
+	renderState.activeShader->setUniform(Uniforms::shadowFac, 1.0f);
 
 	for (auto e : enemies)
 	{
@@ -1061,7 +1075,7 @@ void Sieged::drawWorld(RenderPass renderPass)
 		mat = glm::scale(mat, glm::vec3(0.05f, 0.05f, 0.05f));
 		renderState.activeShader->setUniform(Uniforms::modelMatrix, mat);
 		renderState.activeShader->setUniform(Uniforms::colorMult, glm::vec4(1, 1, 1, 1));
-		protoBotState->draw(renderState, renderer, -1, renderPass == RenderPass::Final ? (int)Uniforms::boneMatrices : -1);
+		protoBotState->draw(renderState, renderer, -1, (int)Uniforms::boneMatrices);
 	}
 
 	for (auto s : soldiers)
@@ -1074,10 +1088,11 @@ void Sieged::drawWorld(RenderPass renderPass)
 		renderState.activeShader->setUniform(Uniforms::modelMatrix, mat);
 		renderState.activeShader->setUniform(Uniforms::colorMult, glm::vec4(1, 1, 1, 1));
 		//renderer->drawTriangles(cube, renderState);
-		s->modelState->draw(renderState, renderer, -1, renderPass == RenderPass::Final ? (int)Uniforms::boneMatrices : -1);
+		s->modelState->draw(renderState, renderer, -1, (int)Uniforms::boneMatrices);
 	}
-	if (renderPass == RenderPass::Final)
-		renderState.activeShader = backgroundShader;
+	renderState.activeShader = renderPass == RenderPass::Final ? backgroundShader : shadowmapBackgroundShader;
+	renderState.activeShader->setUniform(Uniforms::shadowFac, 1.0f);
+
 
 	for (auto b : buildings)
 	{
@@ -1555,8 +1570,8 @@ void Sieged::damageSoldier(Soldier* soldier, int damage)
 		for (auto e : enemies)
 			if (e->lastAttackedCharacter == soldier)
 				e->lastAttackedCharacter = NULL;
-
-		blib::linq::removewhere(soldier->flag->soldiers, [soldier](Soldier* s) { return s == soldier; });
+		if (soldier->flag)
+			blib::linq::removewhere(soldier->flag->soldiers, [soldier](Soldier* s) { return s == soldier; });
 		blib::linq::deletewhere(soldiers, [soldier](Soldier* s) { return s == soldier; });
 	}
 }

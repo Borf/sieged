@@ -280,8 +280,13 @@
       <Command Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">"$(OutDir)\ModelConvert.exe" "%(FullPath)" "%(FullPath).json"</Command>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">%(FullPath).mesh.json</Outputs>
     </CustomBuild>
+    <None Include="..\assets\shaders\gl\getmatrix.animate.vert" />
+    <None Include="..\assets\shaders\gl\getmatrix.static.vert" />
+    <None Include="..\assets\shaders\gl\shadowmap.frag" />
+    <None Include="..\assets\shaders\gl\shadowmap.vert" />
     <None Include="..\assets\shaders\gl\simple.frag" />
     <None Include="..\assets\shaders\gl\simple.vert" />
+    <None Include="..\assets\shaders\gl\skelAnimate.vert" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

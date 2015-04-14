@@ -147,7 +147,9 @@ class Sieged : public blib::App
 	glm::vec4 mousePos3dBegin;
 
 	blib::RenderState renderState;
-	blib::Shader* shadowmapShader;
+	
+	blib::Shader* shadowmapBackgroundShader;
+	blib::Shader* shadowmapCharacterShader;
 	blib::Shader* backgroundShader;
 	blib::Shader* characterShader;
 

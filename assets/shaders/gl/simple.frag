@@ -138,7 +138,7 @@ void main()
 
 	//diffuse = pow(diffuse, 0.25);
 
-	float light = 0.8 * diffuse + 0.2;
+	float light = 0.5 * diffuse + 0.5;
 
 	vec4 color = texture2D(s_texture, texcoord);
 
