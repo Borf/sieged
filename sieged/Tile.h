@@ -1,3 +1,6 @@
+#pragma once
+
+class Building;
 
 class Tile
 {
@@ -8,10 +11,7 @@ public:
 	} floor;
 	Building* building;
 
-	Tile()
-	{
-		building = NULL;
-	}
+	Tile();
 
-	bool isWall() { if (!building) return false; return building->buildingTemplate->type == BuildingTemplate::Wall; }
+	bool isWall();
 };

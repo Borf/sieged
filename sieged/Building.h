@@ -1,8 +1,11 @@
 #pragma once
 
+#include <vector>
 #include <glm/glm.hpp>
 
 class BuildingTemplate;
+class Tile;
+typedef std::vector<std::vector<Tile*>> TileMap;
 
 class Building
 {

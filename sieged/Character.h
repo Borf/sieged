@@ -18,8 +18,6 @@ public:
 	Flowmap* flowmap;
 
 
-	void move(TileMap& tiles, float elapsedTime);
+	void move(TileMap& tiles, float elapsedTime, bool ignoreCollision = false);
 	glm::vec2 directionFromFlowMap();
-
-	Building* updateMovement(float elapsedTime, TileMap &tiles);
 };

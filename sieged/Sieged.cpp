@@ -4,6 +4,7 @@
 #include <fstream>
 #include <set>
 
+#include "Archer.h"
 #include "Soldier.h"
 #include "Enemy.h"
 #include "Building.h"
@@ -110,7 +111,9 @@ void Sieged::init()
 	protoBotState = protobot->getNewState();
 
 	soldierModel = new blib::SkelAnimatedModel("assets/models/testgastje.dae.mesh.json", "assets/models/testgastje.dae.skel.json", resourceManager, renderer);
+	soldierModel->loadAnimation("assets/models/testgastje.dae.idle.anim.json");
 	soldierModel->loadAnimation("assets/models/testgastje.dae.walk.anim.json");
+	soldierModel->loadAnimation("assets/models/testgastje.dae.attack.anim.json");
 	//soldierModel->meshes[0]->material.texture = resourceManager->getResource<blib::Texture>("assets/models/protobot.png");
 
 	soldierState = soldierModel->getNewState();
@@ -400,6 +403,7 @@ void Sieged::update(double elapsedTime)
 			}
 			if (buttons.soldiers->contains(glm::vec2(mouseState.position)))
 			{
+				mode = BuildMode::Normal;
 				Building* barracks = blib::linq::firstOrDefault<Building*>(buildings, [](Building* b) { return b->buildingTemplate->type == BuildingTemplate::Barracks; });
 				assert(barracks);
 				Soldier* soldier = new Soldier(glm::vec2(barracks->position) + glm::vec2(1.5, barracks->buildingTemplate->size.y + 0.1f));
@@ -408,19 +412,44 @@ void Sieged::update(double elapsedTime)
 				soldier->modelState->update(0.01f);
 				soldier->flowmap = NULL;
 				soldiers.push_back(soldier);
-				
-				if (!flags.empty())
+
+				std::vector<Flag*> soldierFlags = blib::linq::where(flags, [](Flag* f) { return f->soldierFlag; });
+				if (!soldierFlags.empty())
 				{
-					std::sort(flags.begin(), flags.end(), [](Flag* a, Flag* b) { return a->soldiers.size() < b->soldiers.size();  });
-					Flag* flag = flags[0];
+					std::sort(soldierFlags.begin(), soldierFlags.end(), [](Flag* a, Flag* b) { return a->soldiers.size() < b->soldiers.size();  });
+					Flag* flag = soldierFlags[0];
 
 					soldier->flowmap = &flag->flowmap;
 					soldier->flag = flag;
 					flag->soldiers.push_back(soldier);
 				}
 			}
+			if (buttons.archers->contains(glm::vec2(mouseState.position)))
+			{
+				mode = BuildMode::Normal;
+				Building* barracks = blib::linq::firstOrDefault<Building*>(buildings, [](Building* b) { return b->buildingTemplate->type == BuildingTemplate::Barracks; });
+				assert(barracks);
+				Archer* archer = new Archer(glm::vec2(barracks->position) + glm::vec2(1.5, barracks->buildingTemplate->size.y + 0.1f));
+				archer->modelState = soldierModel->getNewState();
+				archer->modelState->playAnimation("idle");
+				archer->modelState->update(0.01f);
+				archer->flowmap = NULL;
+				archers.push_back(archer);
+
+				std::vector<Flag*> archerFlags = blib::linq::where(flags, [](Flag* f) { return !f->soldierFlag; });
+				if (!archerFlags.empty())
+				{
+					std::sort(archerFlags.begin(), archerFlags.end(), [](Flag* a, Flag* b) { return a->archers.size() < b->archers.size();  });
+					Flag* flag = flags[0];
+
+					archer->flowmap = &flag->flowmap;
+					archer->flag = flag;
+					flag->archers.push_back(archer);
+				}
+			}
 		}
 	}
+
 
 	if (!mouseState.leftButton && prevMouseState.leftButton)
 	{
@@ -515,12 +544,16 @@ void Sieged::update(double elapsedTime)
 				if (!buttons.flag->contains(glm::vec2(mouseState.position)))
 				{
 					f = new Flag(glm::ivec2(mousePos3d.x, mousePos3d.z));
+					f->soldierFlag = !(tiles[f->position.x][f->position.y]->building && tiles[f->position.x][f->position.y]->building->buildingTemplate->type == BuildingTemplate::Wall);
 					flowmaps.push_back(&f->flowmap);
 					flags.push_back(f);
 					calcPaths();
 				}
 		}
 	}
+	if (mouseState.rightButton && !prevMouseState.rightButton)
+		mode = BuildMode::Normal;
+
 
 	if (blib::linq::contains(buildings, [](Building* b){ return b->buildingTemplate->type == BuildingTemplate::TownHall; }))
 	{
@@ -621,7 +654,7 @@ void Sieged::update(double elapsedTime)
 			if (!enemies.empty())
 			{
 				Enemy* e = blib::linq::min<float, Enemy*>(enemies, [s](Enemy* e) { return glm::distance(e->position, s->position); }, [](Enemy* e) { return e; });
-				if (s)
+				if (e)
 				{
 					if (glm::distance(e->position, s->position) < 5 && glm::distance(e->position, s->position) > 0.001f) // spotting range
 					{
@@ -662,6 +695,77 @@ void Sieged::update(double elapsedTime)
 			}
 		}
 
+		//archers AI
+		for (Archer* a : archers)
+		{
+			a->modelState->update((float)elapsedTime);
+			if (!a->flag)
+				continue;
+			glm::vec2 oldPos = a->position;
+
+			if (!a->atFlag)
+			{
+				if (a->flowmap->flow[a->position.x][a->position.y] != 0)
+					a->movementDirection = a->directionFromFlowMap();
+				a->movementTarget = glm::vec2(a->flag->position) + glm::vec2(0.5f, 0.5f);
+				a->move(tiles, (float)elapsedTime, true);
+
+				if (glm::distance(a->movementTarget, a->position) < 0.75f)
+				{
+					a->atFlag = true;
+					a->calculateWallPosition(tiles);
+				}
+			}
+			else //at flag
+			{
+				if (glm::distance(a->movementTarget, a->position) > 0.1f)
+				{
+					a->position += glm::normalize(a->movementTarget - a->position) * a->speed * (float)elapsedTime;
+				}
+
+				Enemy* attackTarget = NULL;
+				if (!enemies.empty())
+				{
+					Enemy* e = blib::linq::min<float, Enemy*>(enemies, [a](Enemy* e) { return glm::distance(e->position, a->position); }, [](Enemy* e) { return e; });
+					if (e)
+					{
+						if (glm::distance(e->position, a->position) < 15 && glm::distance(e->position, a->position) > 0.001f) // spotting range
+							attackTarget = e;
+					}
+				}
+
+				a->timeLeftForAttack -= (float)elapsedTime;
+				if (a->timeLeftForAttack <= 0)
+					a->timeLeftForAttack = 0;
+
+				if (a->lastAttackedCharacter)
+					if (glm::distance(a->lastAttackedCharacter->position, a->position) < 15.0f)//attackrange
+						attackTarget = a->lastAttackedCharacter;
+
+				if (attackTarget && a->timeLeftForAttack <= 0)
+				{
+					a->modelState->stopAnimation("idle");
+					a->modelState->playAnimation("attack", 0.0f, true);
+					a->timeLeftForAttack = 2.5f; // attack delay
+					damageEnemy(attackTarget, 1);
+				}
+			}
+
+
+			float moved = glm::distance(oldPos, a->position);
+			if (moved < 0.1f * elapsedTime * a->speed)
+			{
+				a->modelState->stopAnimation("walk");
+				if (a->modelState->animations.size() == 0)
+					a->modelState->playAnimation("idle");
+			}
+			else
+			{
+				a->modelState->stopAnimation("idle");
+				if (a->modelState->animations.size() == 0)
+					a->modelState->playAnimation("walk");
+			}
+		}
 
 
 		//enemy AI
@@ -1050,7 +1154,7 @@ void Sieged::drawWorld(RenderPass renderPass)
 	verts.push_back(blib::VertexP3T2N3(glm::vec3(0, 0, 100), glm::vec2(0, 100 / 8.0f), glm::vec3(0, 1, 0)));
 
 	renderState.activeShader->setUniform(Uniforms::modelMatrix, glm::mat4());
-	renderState.activeShader->setUniform(Uniforms::colorMult, glm::vec4(2, 2, 2, 1));
+	renderState.activeShader->setUniform(Uniforms::colorMult, glm::vec4(1.25f, 1.25f, 1.25f, 1));
 	renderState.activeShader->setUniform(Uniforms::buildFactor, 1.0f);
 	renderState.activeShader->setUniform(Uniforms::shadowFac, 1.0f);
 	renderState.activeTexture[0] = gridTexture;
@@ -1078,18 +1182,33 @@ void Sieged::drawWorld(RenderPass renderPass)
 		protoBotState->draw(renderState, renderer, -1, (int)Uniforms::boneMatrices);
 	}
 
-	for (auto s : soldiers)
+	for (auto a : soldiers)
 	{
 		glm::mat4 mat;
-		mat = glm::translate(mat, glm::vec3(s->position.x, 0.0f, s->position.y));
+		mat = glm::translate(mat, glm::vec3(a->position.x, 0.0f, a->position.y));
 		//mat = glm::rotate(mat, -90.0f, glm::vec3(1, 0, 0));
-		mat = glm::rotate(mat, -glm::degrees(atan2(s->movementDirection.y, s->movementDirection.x)) + 90.0f, glm::vec3(0, 1, 0));
+		mat = glm::rotate(mat, -glm::degrees(atan2(a->movementDirection.y, a->movementDirection.x)) + 90.0f, glm::vec3(0, 1, 0));
 		mat = glm::scale(mat, glm::vec3(0.15f, 0.15f, 0.15f));
 		renderState.activeShader->setUniform(Uniforms::modelMatrix, mat);
 		renderState.activeShader->setUniform(Uniforms::colorMult, glm::vec4(1, 1, 1, 1));
 		//renderer->drawTriangles(cube, renderState);
-		s->modelState->draw(renderState, renderer, -1, (int)Uniforms::boneMatrices);
+		a->modelState->draw(renderState, renderer, -1, (int)Uniforms::boneMatrices);
 	}
+
+	for (auto archer : archers)
+	{
+		bool onWall = tiles[archer->position.x][archer->position.y]->building && tiles[archer->position.x][archer->position.y]->building->buildingTemplate->type == BuildingTemplate::Wall;
+		glm::mat4 mat;
+		mat = glm::translate(mat, glm::vec3(archer->position.x, onWall ? 1.75f : 0.0f, archer->position.y));
+		//mat = glm::rotate(mat, -90.0f, glm::vec3(1, 0, 0));
+		mat = glm::rotate(mat, -glm::degrees(atan2(archer->movementDirection.y, archer->movementDirection.x)) + 90.0f, glm::vec3(0, 1, 0));
+		mat = glm::scale(mat, glm::vec3(0.15f, 0.15f, 0.15f));
+		renderState.activeShader->setUniform(Uniforms::modelMatrix, mat);
+		renderState.activeShader->setUniform(Uniforms::colorMult, glm::vec4(2.0f, 1.0f, 1.0f, 1));
+		//renderer->drawTriangles(cube, renderState);
+		archer->modelState->draw(renderState, renderer, -1, (int)Uniforms::boneMatrices);
+	}
+
 	renderState.activeShader = renderPass == RenderPass::Final ? backgroundShader : shadowmapBackgroundShader;
 	renderState.activeShader->setUniform(Uniforms::shadowFac, 1.0f);
 
@@ -1322,7 +1441,12 @@ void Sieged::calcPaths()
 						{
 							if (tiles[newPos.x][newPos.y]->building->buildTimeLeft > 0)
 								costFac = 2;
-							costFac = 10;
+							
+							
+							if (!flowMap->srcBuilding) // flowmap to a flag
+								costFac = 100;
+							else
+								costFac = 10;
 						}
 
 						float newCost = myCosts[pos.x][pos.y] + glm::length(glm::vec2(offset)) * costFac;
@@ -1596,159 +1720,3 @@ void Sieged::damageEnemy(Enemy* enemy, int damage)
 
 
 
-
-
-
-Building::Building(const glm::ivec2 position, BuildingTemplate* buildingTemplate, TileMap& tilemap)
-{
-	this->buildingTemplate = buildingTemplate;
-	this->position = position;
-	for (int x = 0; x < buildingTemplate->size.x; x++)
-		for (int y = 0; y < buildingTemplate->size.y; y++)
-			tilemap[position.x + x][position.y + y]->building = this;
-	this->buildTimeLeft = buildingTemplate->buildTime;
-	this->damage = 0;
-}
-
-BuildingTemplate::BuildingTemplate(const blib::json::Value &data, blib::TextureMap* textureMap, blib::StaticModel* model)
-{
-	this->type = (BuildingTemplate::Type)data["id"].asInt();
-	this->size = glm::ivec2(data["size"][0].asInt(), data["size"][1].asInt());
-	this->texInfo = textureMap->addTexture(data["beltthumb"]);
-	this->model = model;
-	this->buildTime = data["constructiontime"];
-
-	this->rngWeight = -1;
-	if (data.isMember("rng"))
-		rngWeight = data["rng"];
-	cost = data["cost"];
-	hitpoints = data["hitpoints"];
-
-	healthbarSize = 7000;
-	if (data.isMember("healthbarsize"))
-		healthbarSize = data["healthbarsize"];
-}
-
-
-Building* Character::updateMovement(float elapsedTime, TileMap &tiles)
-{
-	glm::ivec2 tile = glm::ivec2(position);
-	if (tile.x < 0 || tile.y < 0)
-		return NULL;
-	int direction = flowmap->flow[tile.x][tile.y];
-
-	glm::vec2 oldPos = position;
-	glm::vec2 originalPos = oldPos;
-
-	glm::vec2 tileCenter = glm::vec2(tile) + glm::vec2(0.5f, 0.5f);
-
-
-	Building* attackBuilding = NULL;
-
-
-	if ((direction & Left) != 0)
-		position.x -= (float)elapsedTime * speed;
-	if (tiles[(int)(position.x)][(int)(position.y)]->building)
-	{
-		position = oldPos;
-		attackBuilding = tiles[(int)(position.x)][(int)(position.y)]->building;
-	}
-	oldPos = position;
-	if ((direction & Right) != 0)
-		position.x += (float)elapsedTime * speed;
-	if (tiles[(int)(position.x)][(int)(position.y)]->building)
-	{
-		position = oldPos;
-		attackBuilding = tiles[(int)(position.x)][(int)(position.y)]->building;
-	}
-	oldPos = position;
-
-	if ((direction & Left) == 0 && (direction & Right) == 0)
-		position.x += (float)elapsedTime * (tileCenter.x - position.x) * blib::math::randomFloat(0.1f, 0.75f);
-	if (tiles[(int)(position.x)][(int)(position.y)]->building)
-	{
-		position = oldPos;
-		attackBuilding = tiles[(int)(position.x)][(int)(position.y)]->building;
-	}
-	oldPos = position;
-
-
-	if ((direction & Down) != 0)
-		position.y += (float)elapsedTime * speed;
-	if (tiles[(int)(position.x)][(int)(position.y)]->building)
-	{
-		position = oldPos;
-		attackBuilding = tiles[(int)(position.x)][(int)(position.y)]->building;
-	}
-	oldPos = position;
-	if ((direction & Up) != 0)
-		position.y -= (float)elapsedTime * speed;
-	if (tiles[(int)(position.x)][(int)(position.y)]->building)
-	{
-		position = oldPos;
-		attackBuilding = tiles[(int)(position.x)][(int)(position.y)]->building;
-	}
-	oldPos = position;
-
-	if ((direction & Down) == 0 && (direction & Up) == 0)
-		position.y += (float)elapsedTime * (tileCenter.y - position.y) * blib::math::randomFloat(0.1f, 0.75f);
-	if (tiles[(int)(position.x)][(int)(position.y)]->building)
-	{
-		position = oldPos;
-		attackBuilding = tiles[(int)(position.x)][(int)(position.y)]->building;
-	}
-	oldPos = position;
-
-	return attackBuilding;
-}
-
-glm::vec2 Character::directionFromFlowMap()
-{
-	glm::ivec2 tile = glm::ivec2(position);
-	int direction = flowmap->flow[tile.x][tile.y];
-
-	glm::vec2 tileCenter = glm::vec2(tile) + glm::vec2(0.5f, 0.5f);
-	glm::vec2 dir;
-
-	//todo: use a 360° direction
-	if ((direction & Left) != 0)
-		dir.x = -1;
-	else if ((direction & Right) != 0)
-		dir.x = 1;
-
-	if ((direction & Up) != 0)
-		dir.y = -1;
-	else if ((direction & Down) != 0)
-		dir.y = 1;
-
-
-	if ((direction & Left) == 0 && (direction & Right) == 0 && fabs(tileCenter.x - position.x) > 0.1f)
-		dir.x = glm::normalize(tileCenter.x - position.x);
-	if ((direction & Down) == 0 && (direction & Up) == 0 && fabs(tileCenter.y - position.y) > 0.1f)
-		dir.y = glm::normalize(tileCenter.y - position.y);
-
-	return dir;
-}
-
-void Character::move(TileMap& tiles, float elapsedTime)
-{
-	if (glm::distance(position, movementTarget) < glm::length(movementDirection) * elapsedTime * speed)
-	{
-		position = movementTarget;
-		return;
-	}
-	glm::vec2 originalPos;
-
-	bool ignoreCollision = false;
-	if (tiles[(int)(position.x)][(int)(position.y)]->building)
-		ignoreCollision = true;
-
-	originalPos = position;
-	position.x += movementDirection.x * elapsedTime * speed;
-	if (!ignoreCollision && tiles[(int)(position.x)][(int)(position.y)]->building)
-		position = originalPos;
-	originalPos = position;
-	position.y += movementDirection.y * elapsedTime * speed;
-	if (!ignoreCollision && tiles[(int)(position.x)][(int)(position.y)]->building)
-		position = originalPos;
-}
