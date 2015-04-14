@@ -1050,7 +1050,7 @@ void Sieged::drawWorld(RenderPass renderPass)
 	verts.push_back(blib::VertexP3T2N3(glm::vec3(0, 0, 100), glm::vec2(0, 100 / 8.0f), glm::vec3(0, 1, 0)));
 
 	renderState.activeShader->setUniform(Uniforms::modelMatrix, glm::mat4());
-	renderState.activeShader->setUniform(Uniforms::colorMult, glm::vec4(1, 1, 1, 1));
+	renderState.activeShader->setUniform(Uniforms::colorMult, glm::vec4(2, 2, 2, 1));
 	renderState.activeShader->setUniform(Uniforms::buildFactor, 1.0f);
 	renderState.activeShader->setUniform(Uniforms::shadowFac, 1.0f);
 	renderState.activeTexture[0] = gridTexture;
