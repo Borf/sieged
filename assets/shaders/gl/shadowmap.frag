@@ -59,7 +59,8 @@ vec2 cellular(vec2 P) {
 
 
 void main(){
-	float noiseFac = clamp(abs(cellular(texcoord + location)), 0, 1);
+	vec2 noise = cellular(texcoord + location);
+	float noiseFac = clamp(abs(noise.x - noise.y), 0, 1);
 	//float noiseFac = clamp(abs(snoise(vec3(texcoord,0.0))), 0.0, 1.0);
 	if(noiseFac > buildFactor)
 		discard;//color.rgb = vec3(0,0,0);
