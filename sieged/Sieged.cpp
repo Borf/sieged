@@ -356,6 +356,8 @@ void Sieged::update(double elapsedTime)
 		conveyorBuildings[i].second = glm::max(conveyorBuildings[i].second - (float)elapsedTime * gameSettings.conveyorSpeed, 64.0f * i);
 	}
 
+	if (mouseState.rightButton && !prevMouseState.leftButton)
+		beginMouseState = mouseState;
 
 	if (mouseState.leftButton && !prevMouseState.leftButton)
 	{
@@ -609,7 +611,10 @@ void Sieged::update(double elapsedTime)
 		nextEnemySpawn -= (float)elapsedTime;
 		if (nextEnemySpawn < 0)
 		{
-			nextEnemySpawn = 10 / (threatLevel + 1);
+			
+			int monstersThisThread = pow(gameSettings.threadLevelFactor * (threatLevel+1), gameSettings.threadLevelExponent);
+
+			nextEnemySpawn = 60 / monstersThisThread;
 
 			while (true)
 			{
