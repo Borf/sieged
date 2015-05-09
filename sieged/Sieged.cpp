@@ -406,48 +406,70 @@ void Sieged::update(double elapsedTime)
 			}
 			if (buttons.knights->contains(glm::vec2(mouseState.position)))
 			{
-				mode = BuildMode::Normal;
-				Building* barracks = blib::linq::firstOrDefault<Building*>(buildings, [](Building* b) { return b->buildingTemplate->type == BuildingTemplate::Barracks; });
-				assert(barracks);
-				Knight* knight = new Knight(glm::vec2(barracks->position) + glm::vec2(1.5, barracks->buildingTemplate->size.y + 0.1f), gameSettings);
-				knight->modelState = knightModel->getNewState();
-				knight->modelState->playAnimation("idle");
-				knight->modelState->update(0.01f);
-				knight->flowmap = NULL;
-				knights.push_back(knight);
-
-				std::vector<Flag*> knightFlags = blib::linq::where(flags, [](Flag* f) { return f->knightFlag; });
-				if (!knightFlags.empty())
+				if (gold < gameSettings.knightTrainingCost)
 				{
-					std::sort(knightFlags.begin(), knightFlags.end(), [](Flag* a, Flag* b) { return a->knights.size() < b->knights.size();  });
-					Flag* flag = knightFlags[0];
+					blib::AnimatableSprite* e = new blib::AnimatableSprite(notEnoughGoldTexture, glm::vec2(mouseState.position) - notEnoughGoldTexture->center);
+					e->resizeTo(glm::vec2(2, 2), 1);
+					e->alphaTo(0, 1);
+					effects.push_back(e);
+				}
+				else
+				{
+					gold -= gameSettings.knightTrainingCost;
+					mode = BuildMode::Normal;
+					Building* barracks = blib::linq::firstOrDefault<Building*>(buildings, [](Building* b) { return b->buildingTemplate->type == BuildingTemplate::Barracks; });
+					assert(barracks);
+					Knight* knight = new Knight(glm::vec2(barracks->position) + glm::vec2(1.5, barracks->buildingTemplate->size.y + 0.1f), gameSettings);
+					knight->modelState = knightModel->getNewState();
+					knight->modelState->playAnimation("idle");
+					knight->modelState->update(0.01f);
+					knight->flowmap = NULL;
+					knights.push_back(knight);
 
-					knight->flowmap = &flag->flowmap;
-					knight->flag = flag;
-					flag->knights.push_back(knight);
+					std::vector<Flag*> knightFlags = blib::linq::where(flags, [](Flag* f) { return f->knightFlag; });
+					if (!knightFlags.empty())
+					{
+						std::sort(knightFlags.begin(), knightFlags.end(), [](Flag* a, Flag* b) { return a->knights.size() < b->knights.size();  });
+						Flag* flag = knightFlags[0];
+
+						knight->flowmap = &flag->flowmap;
+						knight->flag = flag;
+						flag->knights.push_back(knight);
+					}
 				}
 			}
 			if (buttons.archers->contains(glm::vec2(mouseState.position)))
 			{
-				mode = BuildMode::Normal;
-				Building* barracks = blib::linq::firstOrDefault<Building*>(buildings, [](Building* b) { return b->buildingTemplate->type == BuildingTemplate::Barracks; });
-				assert(barracks);
-				Archer* archer = new Archer(glm::vec2(barracks->position) + glm::vec2(1.5, barracks->buildingTemplate->size.y + 0.1f), gameSettings);
-				archer->modelState = knightModel->getNewState();
-				archer->modelState->playAnimation("idle");
-				archer->modelState->update(0.01f);
-				archer->flowmap = NULL;
-				archers.push_back(archer);
-
-				std::vector<Flag*> archerFlags = blib::linq::where(flags, [](Flag* f) { return !f->knightFlag; });
-				if (!archerFlags.empty())
+				if (gold < gameSettings.archerTrainingCost)
 				{
-					std::sort(archerFlags.begin(), archerFlags.end(), [](Flag* a, Flag* b) { return a->archers.size() < b->archers.size();  });
-					Flag* flag = flags[0];
+					blib::AnimatableSprite* e = new blib::AnimatableSprite(notEnoughGoldTexture, glm::vec2(mouseState.position) - notEnoughGoldTexture->center);
+					e->resizeTo(glm::vec2(2, 2), 1);
+					e->alphaTo(0, 1);
+					effects.push_back(e);
+				}
+				else
+				{
+					gold -= gameSettings.archerTrainingCost;
+					mode = BuildMode::Normal;
+					Building* barracks = blib::linq::firstOrDefault<Building*>(buildings, [](Building* b) { return b->buildingTemplate->type == BuildingTemplate::Barracks; });
+					assert(barracks);
+					Archer* archer = new Archer(glm::vec2(barracks->position) + glm::vec2(1.5, barracks->buildingTemplate->size.y + 0.1f), gameSettings);
+					archer->modelState = knightModel->getNewState();
+					archer->modelState->playAnimation("idle");
+					archer->modelState->update(0.01f);
+					archer->flowmap = NULL;
+					archers.push_back(archer);
 
-					archer->flowmap = &flag->flowmap;
-					archer->flag = flag;
-					flag->archers.push_back(archer);
+					std::vector<Flag*> archerFlags = blib::linq::where(flags, [](Flag* f) { return !f->knightFlag; });
+					if (!archerFlags.empty())
+					{
+						std::sort(archerFlags.begin(), archerFlags.end(), [](Flag* a, Flag* b) { return a->archers.size() < b->archers.size();  });
+						Flag* flag = flags[0];
+
+						archer->flowmap = &flag->flowmap;
+						archer->flag = flag;
+						flag->archers.push_back(archer);
+					}
 				}
 			}
 		}

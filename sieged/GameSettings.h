@@ -16,12 +16,14 @@ public:
 	float archeryAttackDelay = 5; // seconds
 	int archeryDamage = 1;
 	int archerHealth = 5;
+	int archerTrainingCost = 10;
 
 	float battleArenaFactor = 1;
 	float knightAttackDelay = 1; // seconds
 	int knightDamage = 1;
 	int knightHealth = 5;
 	float knightSpottingRange = 5;
+	int knightTrainingCost = 10;
 
 	float enemyAttackDelay = 1; // seconds
 	int enemyDamage = 1;
