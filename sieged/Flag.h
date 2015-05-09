@@ -5,15 +5,15 @@
 
 #include "FlowMap.h"
 
-class Soldier;
+class Knight;
 
 class Flag
 {
 public:
 	Flowmap flowmap;
 	glm::ivec2 position;
-	bool soldierFlag;
-	std::vector<Soldier*> soldiers;
+	bool knightFlag;
+	std::vector<Knight*> knights;
 	std::vector<Archer*> archers;
 
 	Flag(const glm::ivec2 &p)

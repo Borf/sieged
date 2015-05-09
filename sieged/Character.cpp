@@ -3,7 +3,9 @@
 #include "FlowMap.h"
 #include "Tile.h"
 #include "Building.h"
+#include "Sieged.h"
 
+#include <glm/gtc/matrix_transform.hpp>
 
 glm::vec2 Character::directionFromFlowMap()
 {
@@ -55,4 +57,14 @@ void Character::move(TileMap& tiles, float elapsedTime, bool ignoreCollision)
 	position.y += movementDirection.y * elapsedTime * speed;
 	if (!ignoreCollision && tiles[(int)(position.x)][(int)(position.y)]->building)
 		position = originalPos;
+}
+
+void Character::drawHealthBar(Sieged* sieged)
+{
+	glm::vec3 p = glm::project(glm::vec3(position.x, 1, position.y), sieged->cameraMatrix, sieged->projectionMatrix, glm::uvec4(0, 0, 1920, 1079));
+
+	float healthFactor = health / 5.0f;
+
+
+	drawHealthBarActual(sieged, p, 1000, healthFactor);
 }

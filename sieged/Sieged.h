@@ -23,8 +23,9 @@ typedef std::vector<std::vector<Tile*> > TileMap;
 class Building;
 class Flag;
 class Enemy;
-class Soldier;
+class Knight;
 class Archer;
+class Damagable;
 
 
 
@@ -35,6 +36,7 @@ class Archer;
 
 class Sieged : public blib::App
 {
+public:
 	std::map<BuildingTemplate::Type, BuildingTemplate*> buildingTemplates;
 	std::vector<Building*> buildings;
 	std::vector<Enemy*> enemies;
@@ -47,7 +49,7 @@ class Sieged : public blib::App
 
 	std::vector<Flag*> flagsToErase;
 
-	std::vector<Soldier*> soldiers;
+	std::vector<Knight*> knights;
 	std::vector<Archer*> archers;
 
 	TileMap tiles;
@@ -60,8 +62,8 @@ class Sieged : public blib::App
 	
 	blib::SkelAnimatedModel* protobot;
 	blib::SkelAnimatedModel::State* protoBotState;
-	blib::SkelAnimatedModel* soldierModel;
-	blib::SkelAnimatedModel::State* soldierState;
+	blib::SkelAnimatedModel* knightModel;
+	blib::SkelAnimatedModel::State* knightState;
 
 
 	blib::Font* font;
@@ -95,7 +97,7 @@ class Sieged : public blib::App
 			blib::AnimatableSprite* wall;
 			blib::AnimatableSprite* market;
 			blib::AnimatableSprite* flag;
-			blib::AnimatableSprite* soldiers;
+			blib::AnimatableSprite* knights;
 			blib::AnimatableSprite* archers;
 		};
 	} buttons;
@@ -190,6 +192,10 @@ public:
 
 	void calcPaths();
 	void calcWalls();
-	void damageSoldier(Soldier* attackTarget, int damage);
+	void damage(Damagable* target, int damage);
+	void damageSoldier(Knight* attackTarget, int damage);
 	void damageEnemy(Enemy* enemy, int damage);
+
+
+	friend class Damagable; //protected spritebatch
 };

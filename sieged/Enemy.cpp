@@ -9,7 +9,5 @@ Enemy::Enemy(glm::vec2 p, Flowmap* flowMap)
 	timeLeftForAttack = 0; 
 	health = 5; 
 	this->flowmap = flowMap; 
-	lastAttackedBuilding = NULL;
-	lastAttackedCharacter = NULL;
 }
 

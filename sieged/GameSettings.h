@@ -7,7 +7,7 @@ public:
 	float stoneMasonFactor = 1;
 	float conveyorBuildingsPerSecond;
 	float conveyorSpeed = 50;
-	float startGold = 1000;
+	int startGold = 1000;
 
 
 

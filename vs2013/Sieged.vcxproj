@@ -91,13 +91,14 @@
     <ClCompile Include="..\sieged\Building.cpp" />
     <ClCompile Include="..\sieged\BuildingTemplate.cpp" />
     <ClCompile Include="..\sieged\Character.cpp" />
+    <ClCompile Include="..\sieged\Damagable.cpp" />
     <ClCompile Include="..\sieged\Enemy.cpp" />
     <ClCompile Include="..\sieged\Flag.cpp" />
     <ClCompile Include="..\sieged\FlowMap.cpp" />
     <ClCompile Include="..\sieged\GameSettings.cpp" />
     <ClCompile Include="..\sieged\main.cpp" />
     <ClCompile Include="..\sieged\Sieged.cpp" />
-    <ClCompile Include="..\sieged\Soldier.cpp" />
+    <ClCompile Include="..\sieged\Knight.cpp" />
     <ClCompile Include="..\sieged\Tile.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -105,12 +106,14 @@
     <ClInclude Include="..\sieged\Building.h" />
     <ClInclude Include="..\sieged\BuildingTemplate.h" />
     <ClInclude Include="..\sieged\Character.h" />
+    <ClInclude Include="..\sieged\Damagable.h" />
     <ClInclude Include="..\sieged\Enemy.h" />
     <ClInclude Include="..\sieged\Flag.h" />
     <ClInclude Include="..\sieged\FlowMap.h" />
     <ClInclude Include="..\sieged\GameSettings.h" />
+    <ClInclude Include="..\sieged\PlayerCharacter.h" />
     <ClInclude Include="..\sieged\Sieged.h" />
-    <ClInclude Include="..\sieged\Soldier.h" />
+    <ClInclude Include="..\sieged\Knight.h" />
     <ClInclude Include="..\sieged\Tile.h" />
   </ItemGroup>
   <ItemGroup>

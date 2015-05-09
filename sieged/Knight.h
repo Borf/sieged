@@ -1,5 +1,6 @@
 #pragma once
 
+#include <glm/glm.hpp>
 #include "PlayerCharacter.h"
 
 #include <blib/SkelAnimatedModel.h>
@@ -7,14 +8,10 @@
 class Flag;
 class Enemy;
 
-class Archer : public PlayerCharacter
+class Knight : public PlayerCharacter
 {
 public:
-	Archer(glm::vec2 p);
-	void calculateWallPosition(TileMap tiles);
-
-
-	bool atFlag;
+	Knight(glm::vec2 p);
 
 
 	blib::SkelAnimatedModel::State* modelState;

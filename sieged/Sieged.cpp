@@ -5,7 +5,7 @@
 #include <set>
 
 #include "Archer.h"
-#include "Soldier.h"
+#include "Knight.h"
 #include "Enemy.h"
 #include "Building.h"
 #include "BuildingTemplate.h"
@@ -108,20 +108,20 @@ void Sieged::init()
 
 	protoBotState = protobot->getNewState();
 
-	soldierModel = new blib::SkelAnimatedModel("assets/models/testgastje.dae.mesh.json", "assets/models/testgastje.dae.skel.json", resourceManager, renderer);
-	soldierModel->loadAnimation("assets/models/testgastje.dae.idle.anim.json");
-	soldierModel->loadAnimation("assets/models/testgastje.dae.walk.anim.json");
-	soldierModel->loadAnimation("assets/models/testgastje.dae.attack.anim.json");
+	knightModel = new blib::SkelAnimatedModel("assets/models/testgastje.dae.mesh.json", "assets/models/testgastje.dae.skel.json", resourceManager, renderer);
+	knightModel->loadAnimation("assets/models/testgastje.dae.idle.anim.json");
+	knightModel->loadAnimation("assets/models/testgastje.dae.walk.anim.json");
+	knightModel->loadAnimation("assets/models/testgastje.dae.attack.anim.json");
 	//soldierModel->meshes[0]->material.texture = resourceManager->getResource<blib::Texture>("assets/models/protobot.png");
 
-	soldierState = soldierModel->getNewState();
+	knightState = knightModel->getNewState();
 
 
 
 	buttons.wall = new blib::AnimatableSprite(resourceManager->getResource<blib::Texture>("assets/textures/hud/btnWall.png"), blib::math::Rectangle(glm::vec2(16, 200), 48, 48));
 	buttons.market = new blib::AnimatableSprite(resourceManager->getResource<blib::Texture>("assets/textures/hud/btnMarket.png"), blib::math::Rectangle(glm::vec2(16, 248), 48, 48));
 	buttons.flag = new blib::AnimatableSprite(resourceManager->getResource<blib::Texture>("assets/textures/hud/btnFlag.png"), blib::math::Rectangle(glm::vec2(16, 296), 48, 48));
-	buttons.soldiers = new blib::AnimatableSprite(resourceManager->getResource<blib::Texture>("assets/textures/hud/btnSoldiers.png"), blib::math::Rectangle(glm::vec2(16, 344), 48, 48));
+	buttons.knights = new blib::AnimatableSprite(resourceManager->getResource<blib::Texture>("assets/textures/hud/btnSoldiers.png"), blib::math::Rectangle(glm::vec2(16, 344), 48, 48));
 	buttons.archers = new blib::AnimatableSprite(resourceManager->getResource<blib::Texture>("assets/textures/hud/btnArchers.png"), blib::math::Rectangle(glm::vec2(16, 392), 48, 48));
 
 	buttons.wall->color = glm::vec4(1, 1, 1, 0);
@@ -400,27 +400,27 @@ void Sieged::update(double elapsedTime)
 				else
 					mode = BuildMode::Flag;
 			}
-			if (buttons.soldiers->contains(glm::vec2(mouseState.position)))
+			if (buttons.knights->contains(glm::vec2(mouseState.position)))
 			{
 				mode = BuildMode::Normal;
 				Building* barracks = blib::linq::firstOrDefault<Building*>(buildings, [](Building* b) { return b->buildingTemplate->type == BuildingTemplate::Barracks; });
 				assert(barracks);
-				Soldier* soldier = new Soldier(glm::vec2(barracks->position) + glm::vec2(1.5, barracks->buildingTemplate->size.y + 0.1f));
-				soldier->modelState = soldierModel->getNewState();
-				soldier->modelState->playAnimation("idle");
-				soldier->modelState->update(0.01f);
-				soldier->flowmap = NULL;
-				soldiers.push_back(soldier);
+				Knight* knight = new Knight(glm::vec2(barracks->position) + glm::vec2(1.5, barracks->buildingTemplate->size.y + 0.1f));
+				knight->modelState = knightModel->getNewState();
+				knight->modelState->playAnimation("idle");
+				knight->modelState->update(0.01f);
+				knight->flowmap = NULL;
+				knights.push_back(knight);
 
-				std::vector<Flag*> soldierFlags = blib::linq::where(flags, [](Flag* f) { return f->soldierFlag; });
-				if (!soldierFlags.empty())
+				std::vector<Flag*> knightFlags = blib::linq::where(flags, [](Flag* f) { return f->knightFlag; });
+				if (!knightFlags.empty())
 				{
-					std::sort(soldierFlags.begin(), soldierFlags.end(), [](Flag* a, Flag* b) { return a->soldiers.size() < b->soldiers.size();  });
-					Flag* flag = soldierFlags[0];
+					std::sort(knightFlags.begin(), knightFlags.end(), [](Flag* a, Flag* b) { return a->knights.size() < b->knights.size();  });
+					Flag* flag = knightFlags[0];
 
-					soldier->flowmap = &flag->flowmap;
-					soldier->flag = flag;
-					flag->soldiers.push_back(soldier);
+					knight->flowmap = &flag->flowmap;
+					knight->flag = flag;
+					flag->knights.push_back(knight);
 				}
 			}
 			if (buttons.archers->contains(glm::vec2(mouseState.position)))
@@ -429,13 +429,13 @@ void Sieged::update(double elapsedTime)
 				Building* barracks = blib::linq::firstOrDefault<Building*>(buildings, [](Building* b) { return b->buildingTemplate->type == BuildingTemplate::Barracks; });
 				assert(barracks);
 				Archer* archer = new Archer(glm::vec2(barracks->position) + glm::vec2(1.5, barracks->buildingTemplate->size.y + 0.1f));
-				archer->modelState = soldierModel->getNewState();
+				archer->modelState = knightModel->getNewState();
 				archer->modelState->playAnimation("idle");
 				archer->modelState->update(0.01f);
 				archer->flowmap = NULL;
 				archers.push_back(archer);
 
-				std::vector<Flag*> archerFlags = blib::linq::where(flags, [](Flag* f) { return !f->soldierFlag; });
+				std::vector<Flag*> archerFlags = blib::linq::where(flags, [](Flag* f) { return !f->knightFlag; });
 				if (!archerFlags.empty())
 				{
 					std::sort(archerFlags.begin(), archerFlags.end(), [](Flag* a, Flag* b) { return a->archers.size() < b->archers.size();  });
@@ -515,6 +515,11 @@ void Sieged::update(double elapsedTime)
 
 				calcWalls();
 				calcPaths();
+
+				for (auto f : flags)
+					f->knightFlag = !(tiles[f->position.x][f->position.y]->building && tiles[f->position.x][f->position.y]->building->buildingTemplate->type == BuildingTemplate::Wall);
+
+
 			}
 		}
 		else if (mode == BuildMode::Flag)
@@ -526,13 +531,13 @@ void Sieged::update(double elapsedTime)
 				blib::linq::removewhere(flowmaps, [f](Flowmap* fm) { return fm == &f->flowmap; });
 
 
-				std::vector<Soldier*> solds = f->soldiers;
+				std::vector<Knight*> solds = f->knights;
 				flagsToErase.push_back(f);
 
 				for (auto s : solds)
 				{
-					std::sort(flags.begin(), flags.end(), [](Flag* a, Flag* b) { return a->soldiers.size() < b->soldiers.size();  });
-					flags[0]->soldiers.push_back(s);
+					std::sort(flags.begin(), flags.end(), [](Flag* a, Flag* b) { return a->knights.size() < b->knights.size();  });
+					flags[0]->knights.push_back(s);
 					s->flowmap = &flags[0]->flowmap;
 					s->flag = flags[0];
 				}
@@ -543,7 +548,7 @@ void Sieged::update(double elapsedTime)
 				if (!buttons.flag->contains(glm::vec2(mouseState.position)))
 				{
 					f = new Flag(glm::ivec2(mousePos3d.x, mousePos3d.z));
-					f->soldierFlag = !(tiles[f->position.x][f->position.y]->building && tiles[f->position.x][f->position.y]->building->buildingTemplate->type == BuildingTemplate::Wall);
+					f->knightFlag = !(tiles[f->position.x][f->position.y]->building && tiles[f->position.x][f->position.y]->building->buildingTemplate->type == BuildingTemplate::Wall);
 					flowmaps.push_back(&f->flowmap);
 					flags.push_back(f);
 					calcPaths();
@@ -554,7 +559,7 @@ void Sieged::update(double elapsedTime)
 		mode = BuildMode::Normal;
 
 
-	if (blib::linq::contains(buildings, [](Building* b){ return b->buildingTemplate->type == BuildingTemplate::TownHall; }))
+	if (blib::linq::contains(buildings, [](Building* b){ return b->buildingTemplate->type == BuildingTemplate::TownHall && b->buildTimeLeft == 0;  }))
 	{
 		lastConveyorBuilding -= (float)elapsedTime;
 		if (lastConveyorBuilding <= 0)
@@ -618,15 +623,15 @@ void Sieged::update(double elapsedTime)
 
 		
 
-		//soldier AI
-		for (Soldier* s : soldiers)
+		//knight AI
+		for (Knight* s : knights)
 		{
 			s->modelState->update((float)elapsedTime);
 			if (!s->flag)
 				continue;
 			s->movementDirection = s->directionFromFlowMap();
 			s->movementTarget = glm::vec2(s->flag->position) + glm::vec2(0.5f, 0.5f);
-			for (auto ee : soldiers)
+			for (auto ee : knights)
 			{
 				if (s == ee)
 					continue;
@@ -669,9 +674,13 @@ void Sieged::update(double elapsedTime)
 			if (s->timeLeftForAttack <= 0)
 				s->timeLeftForAttack = 0;
 
-			if (s->lastAttackedCharacter)
-				if (glm::distance(s->lastAttackedCharacter->position, s->position) < 0.5f)
-					attackTarget = s->lastAttackedCharacter;
+			if (s->lastAttackedEntity)
+			{
+				Enemy* asEnemy = static_cast<Enemy*>(s->lastAttackedEntity);
+				if (asEnemy)
+					if (glm::distance(asEnemy->position, s->position) < 0.5f)
+						attackTarget = asEnemy;
+			}
 
 			if (attackTarget && s->timeLeftForAttack <= 0)
 			{
@@ -704,7 +713,7 @@ void Sieged::update(double elapsedTime)
 
 			if (!a->atFlag)
 			{
-				if (a->flowmap->flow[a->position.x][a->position.y] != 0)
+				if (a->flowmap->flow[(int)a->position.x][(int)a->position.y] != 0)
 					a->movementDirection = a->directionFromFlowMap();
 				a->movementTarget = glm::vec2(a->flag->position) + glm::vec2(0.5f, 0.5f);
 				a->move(tiles, (float)elapsedTime, true);
@@ -737,9 +746,13 @@ void Sieged::update(double elapsedTime)
 				if (a->timeLeftForAttack <= 0)
 					a->timeLeftForAttack = 0;
 
-				if (a->lastAttackedCharacter)
-					if (glm::distance(a->lastAttackedCharacter->position, a->position) < 15.0f)//attackrange
-						attackTarget = a->lastAttackedCharacter;
+				if (a->lastAttackedEntity)
+				{
+					Enemy* asEnemy = static_cast<Enemy*>(a->lastAttackedEntity);
+					if (asEnemy)
+						if (glm::distance(asEnemy->position, a->position) < 15.0f)//attackrange
+							attackTarget = asEnemy;
+				}
 
 				if (attackTarget && a->timeLeftForAttack <= 0)
 				{
@@ -795,10 +808,10 @@ void Sieged::update(double elapsedTime)
 					e->movementDirection = glm::normalize(projection - e->position);
 			}
 
-			Soldier* attackTarget = NULL;
-			if (!soldiers.empty())
+			Damagable* attackTarget = NULL;
+			if (!knights.empty())
 			{
-				Soldier* s = blib::linq::min<float, Soldier*>(soldiers, [e](Soldier* s) { return glm::distance(e->position, s->position); }, [](Soldier* s) { return s; });
+				Knight* s = blib::linq::min<float, Knight*>(knights, [e](Knight* s) { return glm::distance(e->position, s->position); }, [](Knight* s) { return s; });
 				if (s)
 				{
 					if (glm::distance(e->position, s->position) < 5 && glm::distance(e->position, s->position) >  0.001f) // spotting range
@@ -812,129 +825,23 @@ void Sieged::update(double elapsedTime)
 			if (e->timeLeftForAttack <= 0)
 				e->timeLeftForAttack = 0;
 
-			if (e->lastAttackedCharacter)
-				if (glm::distance(e->lastAttackedCharacter->position, e->position) < 0.5f)
-					attackTarget = e->lastAttackedCharacter;
+			if (e->lastAttackedEntity)
+			{
+				PlayerCharacter* asPlayerCharacter = static_cast<PlayerCharacter*>(e->lastAttackedEntity);
+				if (asPlayerCharacter)
+					if (glm::distance(asPlayerCharacter->position, e->position) < 0.5f)
+						attackTarget = asPlayerCharacter;
+			}
 
 			if (attackTarget && e->timeLeftForAttack <= 0)
 			{
 				e->timeLeftForAttack = 0.5f; // attack delay
-				e->lastAttackedCharacter = attackTarget;
-					damageSoldier(attackTarget, 1);
+				e->lastAttackedEntity = attackTarget;
+				damage(attackTarget, 1);
 			}
 
 			e->move(tiles, (float)elapsedTime);
 		}
-
-		//old enemy AI
-		/*
-		for (size_t i = 0; i < enemies.size(); i++)
-		{
-			Enemy* e = enemies[i];
-			
-			glm::vec2 originalPos = e->position;
-			Building* attackBuilding = e->updateMovement((float)elapsedTime, tiles);
-			
-			if (originalPos == e->position && !attackBuilding)
-			{
-				if (tiles[(int)(e->position.x)][(int)(e->position.y)]->building)
-					attackBuilding = tiles[(int)(e->position.x)][(int)(e->position.y)]->building;
-
-				glm::vec2 closestPoint;
-				Building* closestBuilding = buildings[0];
-
-				for (auto b : buildings)
-				{
-					blib::math::Rectangle buildRect(glm::vec2(b->position), b->buildingTemplate->size.x, b->buildingTemplate->size.y);
-					glm::vec2 projection = buildRect.projectClosest(e->position);
-					
-					if (glm::distance(e->position, closestPoint) > glm::distance(e->position, projection))
-					{
-						closestBuilding = b;
-						closestPoint = projection;
-					}
-				}
-				attackBuilding = closestBuilding;
-			}
-
-
-			e->timeLeftForAttack = glm::max(0.0f, e->timeLeftForAttack - (float)elapsedTime);
-			if (attackBuilding && e->timeLeftForAttack <= 0)
-			{
-				attackBuilding->damage++;
-				e->timeLeftForAttack = 0.1f;
-				float buildFactor = 1.0f - glm::min(1.0f, attackBuilding->buildTimeLeft / attackBuilding->buildingTemplate->buildTime);
-
-				if (attackBuilding->damage >= attackBuilding->buildingTemplate->hitpoints * buildFactor)
-				{
-					Log::out << "Enemy " << i << Log::newline;
-					for (int x = 0; x < attackBuilding->buildingTemplate->size.x; x++)
-					{
-						for (int y = 0; y < attackBuilding->buildingTemplate->size.y; y++)
-						{
-							tiles[attackBuilding->position.x + x][attackBuilding->position.y + y]->building = NULL;
-						}
-					}
-
-					for (size_t i = 0; i < buildings.size(); i++)
-					{
-						if (buildings[i] == attackBuilding)
-						{
-							buildings.erase(buildings.begin() + i);
-							break;
-						}
-					}
-					delete attackBuilding;
-					calcPaths();
-					calcWalls();
-				}
-			}
-
-			/*if (direction == 0) // oops
-			{
-				//find nearest wall
-				glm::vec2 closestPoint;
-				for (const blib::math::Polygon &p : collisionWalls)
-				{
-					for (size_t i = 0; i < p.size(); i++)
-					{
-						int ii = (i + 1) % p.size();
-						glm::vec2 point = blib::math::Line(p[i], p[ii]).project(e->position);
-						if (glm::distance(point, e->position) < glm::distance(closestPoint, e->position))
-							closestPoint = point;
-					}
-				}
-				oldPos = e->position = closestPoint;
-			}* /
-
-
-			for (auto ee : enemies)
-			{
-				if (e == ee)
-					continue;
-				glm::vec2 diff = ee->position - e->position;
-				float len = glm::length(diff);
-				if (len < 0.2f && len > 0.001f)
-				{
-					diff /= len;
-					e->position += (0.2f - len) * -0.5f * diff;
-					ee->position += (0.2f - len) * 0.5f * diff;
-				}
-			}
-			if (tiles[(int)(e->position.x)][(int)(e->position.y)]->building)
-				e->position = originalPos;
-
-			e->movementDirection = e->position - originalPos;
-
-			originalPos = e->position;
-		}*/
-
-
-
-
-
-
-
 
 	}
 
@@ -985,7 +892,7 @@ void Sieged::update(double elapsedTime)
 	for (blib::AnimatableSprite* button : buttons.buttons)
 		button->update((float)elapsedTime);
 	protoBotState->update((float)elapsedTime);
-	soldierState->update((float)elapsedTime);
+	knightState->update((float)elapsedTime);
 
 	prevMouseState = mouseState;
 }
@@ -1076,26 +983,14 @@ void Sieged::draw()
 
 
 	for (auto b : buildings)
-	{
-		if (b->damage == 0 && b->buildTimeLeft == 0)
-			continue;
+		b->drawHealthBar(this);
+	for (auto k : knights)
+		k->drawHealthBar(this);
+	for (auto a : archers)
+		a->drawHealthBar(this);
+	for (auto e : enemies)
+		e->drawHealthBar(this);
 
-		glm::vec3 position = glm::project(glm::vec3(b->position.x + b->buildingTemplate->size.x / 2.0f, 4, b->position.y + b->buildingTemplate->size.y / 2.0f), cameraMatrix, projectionMatrix, glm::uvec4(0, 0, 1920, 1079));
-				
-		float barWidth = b->buildingTemplate->healthbarSize / cameraDistance;
-		float barHeight = glm::max(300 / cameraDistance, 4.0f);
-
-		float borderSize = glm::round(glm::min(4.0f, 30 / cameraDistance));
-
-		float buildFactor = 1.0f-glm::min(1.0f, b->buildTimeLeft / b->buildingTemplate->buildTime);
-		float health = (b->buildingTemplate->hitpoints - b->damage) / (float)b->buildingTemplate->hitpoints * buildFactor;
-		float healthBarWidth = (barWidth - 2 * borderSize) * health;
-	
-		glm::vec4 color = glm::mix(blib::Color::reddish, blib::Color::limeGreen, health);
-
-		spriteBatch->draw(whitePixel, blib::math::easyMatrix(glm::vec2(position.x - barWidth / 2, 1079 - position.y), 0, glm::vec2(barWidth, barHeight)));
-		spriteBatch->draw(whitePixel, blib::math::easyMatrix(glm::vec2(position.x - barWidth / 2 + borderSize, 1079 - position.y + borderSize), 0, glm::vec2(healthBarWidth, barHeight - 2 * borderSize)), color);
-	}
 
 
 	//spriteBatch->draw(shadowMap, blib::math::easyMatrix(glm::vec2(250,224), 0, glm::vec2(0.05f, -0.05f)));
@@ -1181,7 +1076,7 @@ void Sieged::drawWorld(RenderPass renderPass)
 		protoBotState->draw(renderState, renderer, -1, (int)Uniforms::boneMatrices);
 	}
 
-	for (auto a : soldiers)
+	for (auto a : knights)
 	{
 		glm::mat4 mat;
 		mat = glm::translate(mat, glm::vec3(a->position.x, 0.0f, a->position.y));
@@ -1196,7 +1091,7 @@ void Sieged::drawWorld(RenderPass renderPass)
 
 	for (auto archer : archers)
 	{
-		bool onWall = tiles[archer->position.x][archer->position.y]->building && tiles[archer->position.x][archer->position.y]->building->buildingTemplate->type == BuildingTemplate::Wall;
+		bool onWall = tiles[(int)archer->position.x][(int)archer->position.y]->building && tiles[(int)archer->position.x][(int)archer->position.y]->building->buildingTemplate->type == BuildingTemplate::Wall;
 		glm::mat4 mat;
 		mat = glm::translate(mat, glm::vec3(archer->position.x, onWall ? 1.75f : 0.0f, archer->position.y));
 		//mat = glm::rotate(mat, -90.0f, glm::vec3(1, 0, 0));
@@ -1318,7 +1213,10 @@ void Sieged::drawWorld(RenderPass renderPass)
 			renderState.activeTexture[0] = gridTexture;
 			renderState.activeShader->setUniform(Uniforms::modelMatrix, mat);
 			renderState.activeShader->setUniform(Uniforms::colorMult, glm::vec4(1, 1, 1, 0.5f));
+			blib::RenderState::CullFaces oldCull = renderState.cullFaces;
+			renderState.cullFaces = blib::RenderState::CullFaces::NONE;
 			renderer->drawTriangles(cube, renderState);
+			renderState.cullFaces = oldCull;
 		}
 		else
 		{
@@ -1347,7 +1245,10 @@ void Sieged::drawWorld(RenderPass renderPass)
 			renderState.activeTexture[0] = gridTexture;
 			renderState.activeShader->setUniform(Uniforms::modelMatrix, mat);
 			renderState.activeShader->setUniform(Uniforms::colorMult, glm::vec4(1, 1, 1, 0.5f));
+			blib::RenderState::CullFaces oldCull = renderState.cullFaces;
+			renderState.cullFaces = blib::RenderState::CullFaces::NONE;
 			renderer->drawTriangles(cube, renderState);
+			renderState.cullFaces = oldCull;
 		}
 
 		renderState.depthTest = true;
@@ -1685,28 +1586,38 @@ void Sieged::calcWalls()
 	}
 }
 
-void Sieged::damageSoldier(Soldier* soldier, int damage)
+
+
+void Sieged::damage(Damagable* target, int damage)
 {
-	soldier->health--;
-	if (soldier->health <= 0)
+	target->health -= damage;
+
+	if (static_cast<Knight*>(target))
+		damageSoldier(static_cast<Knight*>(target), damage);
+	else if (static_cast<Enemy*>(target))
+		damageEnemy(static_cast<Enemy*>(target), damage);
+}
+
+void Sieged::damageSoldier(Knight* soldier, int damage)
+{
+	if (!soldier->isAlive())
 	{
 		for (auto e : enemies)
-			if (e->lastAttackedCharacter == soldier)
-				e->lastAttackedCharacter = NULL;
+			if (e->lastAttackedEntity == soldier)
+				e->lastAttackedEntity = NULL;
 		if (soldier->flag)
-			blib::linq::removewhere(soldier->flag->soldiers, [soldier](Soldier* s) { return s == soldier; });
-		blib::linq::deletewhere(soldiers, [soldier](Soldier* s) { return s == soldier; });
+			blib::linq::removewhere(soldier->flag->knights, [soldier](Knight* s) { return s == soldier; });
+		blib::linq::deletewhere(knights, [soldier](Knight* s) { return s == soldier; });
 	}
 }
 
 void Sieged::damageEnemy(Enemy* enemy, int damage)
 {
-	enemy->health--;
-	if (enemy->health <= 0)
+	if (!enemy->isAlive())
 	{
-		for (auto s : soldiers)
-			if (s->lastAttackedCharacter == enemy)
-				s->lastAttackedCharacter = NULL;
+		for (auto s : knights)
+			if (s->lastAttackedEntity == enemy)
+				s->lastAttackedEntity = NULL;
 		blib::linq::deletewhere(enemies, [enemy](Enemy* e) { return e == enemy; });
 	}
 }

@@ -7,7 +7,7 @@ BuildingTemplate::BuildingTemplate(const blib::json::Value &data, blib::TextureM
 	this->size = glm::ivec2(data["size"][0].asInt(), data["size"][1].asInt());
 	this->texInfo = textureMap->addTexture(data["beltthumb"]);
 	this->model = model;
-	this->buildTime = data["constructiontime"].asFloat() / 100.0f;
+	this->buildTime = data["constructiontime"].asFloat();
 
 	this->rngWeight = -1;
 	if (data.isMember("rng"))

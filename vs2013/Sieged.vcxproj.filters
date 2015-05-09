@@ -45,9 +45,6 @@
     <ClCompile Include="..\sieged\FlowMap.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\sieged\Soldier.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="..\sieged\Tile.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -58,6 +55,12 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\sieged\GameSettings.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\sieged\Knight.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\sieged\Damagable.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -80,9 +83,6 @@
     <ClInclude Include="..\sieged\FlowMap.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\sieged\Soldier.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="..\sieged\Tile.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -93,6 +93,15 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\sieged\GameSettings.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\sieged\Damagable.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\sieged\PlayerCharacter.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\sieged\Knight.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
