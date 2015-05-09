@@ -21,6 +21,7 @@ public:
 	float knightAttackDelay = 1; // seconds
 	int knightDamage = 1;
 	int knightHealth = 5;
+	float knightSpottingRange = 5;
 
 	float enemyAttackDelay = 1; // seconds
 	int enemyDamage = 1;

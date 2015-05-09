@@ -811,7 +811,11 @@ void Sieged::update(double elapsedTime)
 				Knight* s = blib::linq::min<float, Knight*>(knights, [e](Knight* s) { return glm::distance(e->position, s->position); }, [](Knight* s) { return s; });
 				if (s)
 				{
-					if (glm::distance(e->position, s->position) < 5 && glm::distance(e->position, s->position) >  0.001f) // spotting range
+					float spotRange = gameSettings.knightSpottingRange;
+					if (glm::distance(s->position, glm::vec2(s->flag->position) + glm::vec2(0.5f, 0.5f)) < 1)
+						spotRange *= 2;
+
+					if (glm::distance(e->position, s->position) < spotRange && glm::distance(e->position, s->position) >  0.001f) // spotting range
 						e->movementDirection = glm::normalize(s->position - e->position);
 					if (glm::distance(e->position, s->position) < 0.25f) //attack range
 						attackTarget = s;
