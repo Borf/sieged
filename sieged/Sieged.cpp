@@ -409,7 +409,7 @@ void Sieged::update(double elapsedTime)
 				mode = BuildMode::Normal;
 				Building* barracks = blib::linq::firstOrDefault<Building*>(buildings, [](Building* b) { return b->buildingTemplate->type == BuildingTemplate::Barracks; });
 				assert(barracks);
-				Knight* knight = new Knight(glm::vec2(barracks->position) + glm::vec2(1.5, barracks->buildingTemplate->size.y + 0.1f));
+				Knight* knight = new Knight(glm::vec2(barracks->position) + glm::vec2(1.5, barracks->buildingTemplate->size.y + 0.1f), gameSettings);
 				knight->modelState = knightModel->getNewState();
 				knight->modelState->playAnimation("idle");
 				knight->modelState->update(0.01f);
@@ -613,7 +613,7 @@ void Sieged::update(double elapsedTime)
 				glm::vec2 pos = glm::vec2(50,50) + 49.0f * blib::util::fromAngle(blib::math::randomFloat(0, 2 * blib::math::pif));
 				if (tiles[(int)(pos.x)][(int)(pos.y)]->building)
 					continue;
-				enemies.push_back(new Enemy(pos, &flowMap));
+				enemies.push_back(new Enemy(pos, &flowMap, gameSettings));
 				break;
 			}
 		}
