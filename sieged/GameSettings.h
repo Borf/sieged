@@ -13,12 +13,18 @@ public:
 	float threadLevelExponent = 2;
 
 	float archeryRangeFactor = 1;
-	float archeryAttackDelay = 1; // seconds
+	float archeryAttackDelay = 5; // seconds
 	int archeryDamage = 1;
 	int archerHealth = 5;
+
+	float battleArenaFactor = 1;
+	float knightAttackDelay = 1; // seconds
+	int knightDamage = 1;
+	int knightHealth = 5;
 
 
 
 	float wallBuildSpeed = 1; //derived
 	float archerStrength = 1; //derived
+	float knightStrength = 1; //deriveds
 };

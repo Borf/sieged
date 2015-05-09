@@ -193,8 +193,7 @@ public:
 	void calcPaths();
 	void calcWalls();
 	void damage(Damagable* target, int damage);
-	void damageSoldier(Knight* attackTarget, int damage);
-	void damageEnemy(Enemy* enemy, int damage);
+
 
 
 	friend class Damagable; //protected spritebatch
