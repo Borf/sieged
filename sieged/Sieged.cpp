@@ -58,6 +58,7 @@ void Sieged::init()
 	gridTexture = resourceManager->getResource<blib::Texture>("assets/textures/grid.png");
 	enemyTexture = resourceManager->getResource<blib::Texture>("assets/textures/enemy.png");
 	arrowsTexture = resourceManager->getResource<blib::Texture>("assets/textures/arrows.png");
+	cloudTexture = resourceManager->getResource<blib::Texture>("assets/textures/cloud.png");
 	conveyorTexture = resourceManager->getResource<blib::Texture>("assets/textures/conveyor.png");
 	conveyorTexture->setTextureRepeat(true);
 	gridTexture->setTextureRepeat(true);
@@ -123,6 +124,10 @@ void Sieged::init()
 	buttons.flag = new blib::AnimatableSprite(resourceManager->getResource<blib::Texture>("assets/textures/hud/btnFlag.png"), blib::math::Rectangle(glm::vec2(16, 296), 48, 48));
 	buttons.knights = new blib::AnimatableSprite(resourceManager->getResource<blib::Texture>("assets/textures/hud/btnSoldiers.png"), blib::math::Rectangle(glm::vec2(16, 344), 48, 48));
 	buttons.archers = new blib::AnimatableSprite(resourceManager->getResource<blib::Texture>("assets/textures/hud/btnArchers.png"), blib::math::Rectangle(glm::vec2(16, 392), 48, 48));
+
+	buttons.magic.powerSurge = new blib::AnimatableSprite(resourceManager->getResource<blib::Texture>("assets/textures/hud/btnPowerSurge.png"), blib::math::Rectangle(glm::vec2(16, 440), 48, 48));
+	buttons.magic.lightningBolt = new blib::AnimatableSprite(resourceManager->getResource<blib::Texture>("assets/textures/hud/btnLightningBolt.png"), blib::math::Rectangle(glm::vec2(16, 488), 48, 48));
+	buttons.magic.thunderstorm = new blib::AnimatableSprite(resourceManager->getResource<blib::Texture>("assets/textures/hud/btnThunderStorm.png"), blib::math::Rectangle(glm::vec2(16, 536), 48, 48));
 
 	buttons.wall->color = glm::vec4(1, 1, 1, 0);
 
@@ -388,8 +393,6 @@ void Sieged::update(double elapsedTime)
 							button->resizeTo(glm::vec2(0.8f, 0.8f), 0.1f);
 						});
 
-
-
 			if (buttons.wall->contains(glm::vec2(mouseState.position)))
 			{
 				if (mode == BuildMode::Wall)
@@ -471,6 +474,13 @@ void Sieged::update(double elapsedTime)
 						flag->archers.push_back(archer);
 					}
 				}
+			}
+			if (buttons.magic.thunderstorm->contains(glm::vec2(mouseState.position)))
+			{
+				if (mode == BuildMode::MagicThunderstorm)
+					mode = BuildMode::Normal;
+				else
+					mode = BuildMode::MagicThunderstorm;
 			}
 		}
 	}
@@ -568,11 +578,18 @@ void Sieged::update(double elapsedTime)
 					calcPaths();
 				}
 		}
+		else if (mode == BuildMode::MagicThunderstorm && !buttons.magic.thunderstorm->contains(glm::vec2(mouseState.position)))
+		{
+			mode = BuildMode::Normal;
+			
+			thunderStormPosition = glm::vec3(mousePos3d);
+			thunderStormTime = 2;
+		}
 	}
 	if (mouseState.rightButton && !prevMouseState.rightButton && glm::distance(glm::vec2(beginMouseState.position), glm::vec2(mouseState.position)) < 4)
 		mode = BuildMode::Normal;
 
-
+	
 	if (blib::linq::contains(buildings, [](Building* b){ return b->buildingTemplate->type == BuildingTemplate::TownHall && b->buildTimeLeft == 0;  }))
 	{
 		lastConveyorBuilding -= (float)elapsedTime;
@@ -940,6 +957,22 @@ void Sieged::update(double elapsedTime)
 		}
 	}
 
+	if (thunderStormTime > 0)
+	{
+		thunderStormTime -= elapsedTime;
+		thunderStormClouds.push_back(glm::vec4(thunderStormPosition + glm::vec3(blib::math::randomFloat(-4, 4), 7, blib::math::randomFloat(-4, 4)), 0));
+	}
+
+	for (int i = 0; i < (int)thunderStormClouds.size(); i++)
+	{
+		thunderStormClouds[i].w += elapsedTime;
+		if (thunderStormClouds[i].w > 2)
+		{
+			thunderStormClouds.erase(thunderStormClouds.begin() + i);
+			i--;
+		}
+	}
+
 
 	lightDirection += (float)elapsedTime * 0.001f;
 
@@ -1026,6 +1059,18 @@ void Sieged::draw()
 	spriteBatch->begin();
 
 
+	for (glm::vec4& c : thunderStormClouds)
+	{
+		glm::vec3 p = glm::project(glm::vec3(c), cameraMatrix, projectionMatrix, glm::uvec4(0, 0, window->getWidth(), window->getHeight()));
+		if (p.z < 0 || p.z > 1)
+			continue;
+		if (c.w < 1)
+			spriteBatch->draw(cloudTexture, blib::math::easyMatrix(glm::vec2(p)), cloudTexture->center, glm::vec4(1,1,1,c.w));
+		else
+			spriteBatch->draw(cloudTexture, blib::math::easyMatrix(glm::vec2(p)), cloudTexture->center, glm::vec4(1, 1, 1, 2-c.w));
+	}
+
+
 
 	for (auto b : buildings)
 		b->drawHealthBar(this);
@@ -1065,6 +1110,10 @@ void Sieged::draw()
 	spriteBatch->draw(font, "Speed: " + std::to_string(speed), blib::math::easyMatrix(glm::vec2(0, 152)));
 
 
+	spriteBatch->draw(font48, "Gold: " + std::to_string(gold), blib::math::easyMatrix(glm::vec2(1920 - 10 - font48->textlen("Gold: " + std::to_string(gold)) - 1, 5)), blib::Color::black);
+	spriteBatch->draw(font48, "Gold: " + std::to_string(gold), blib::math::easyMatrix(glm::vec2(1920 - 10 - font48->textlen("Gold: " + std::to_string(gold)) + 1, 5)), blib::Color::black);
+	spriteBatch->draw(font48, "Gold: " + std::to_string(gold), blib::math::easyMatrix(glm::vec2(1920 - 10 - font48->textlen("Gold: " + std::to_string(gold)), 4)), blib::Color::black);
+	spriteBatch->draw(font48, "Gold: " + std::to_string(gold), blib::math::easyMatrix(glm::vec2(1920 - 10 - font48->textlen("Gold: " + std::to_string(gold)), 6)), blib::Color::black);
 	spriteBatch->draw(font48, "Gold: " + std::to_string(gold), blib::math::easyMatrix(glm::vec2(1920 - 10 - font48->textlen("Gold: " + std::to_string(gold)), 5)));
 
 	spriteBatch->draw(whitePixel, blib::math::easyMatrix(glm::vec2(1920 - 75, 50), 0, glm::vec2(50, 50)));
@@ -1072,6 +1121,13 @@ void Sieged::draw()
 	spriteBatch->draw(whitePixel, blib::math::easyMatrix(glm::vec2(1920 - 75, 50), 0, glm::vec2(50 * threatFrac, 50)), blib::Color::pinkishOrange);
 	spriteBatch->draw(font48, std::to_string((int)threatLevel), blib::math::easyMatrix(glm::vec2(1920 - 60, 50)), blib::Color::black);
 	spriteBatch->draw(font48, std::to_string(flags.size()) + " / " + std::to_string(maxFlagCount), blib::math::easyMatrix(glm::vec2(100, 300)));
+
+
+
+	if (mode == BuildMode::MagicThunderstorm)
+	{
+		spriteBatch->draw(buttons.magic.thunderstorm->texture, blib::math::easyMatrix(glm::vec2(mouseState.position)), buttons.magic.thunderstorm->texture->center);
+	}
 
 
 	spriteBatch->end();
@@ -1247,7 +1303,7 @@ void Sieged::drawWorld(RenderPass renderPass)
 	}
 
 
-	if (mode == BuildMode::Wall)
+	if (mode == BuildMode::Wall && renderPass == RenderPass::Final)
 	{
 		renderState.depthTest = false;
 		if (!mouseState.leftButton)

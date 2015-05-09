@@ -75,6 +75,7 @@ public:
 	blib::Texture* enemyTexture;
 	blib::Texture* conveyorTexture;
 	blib::Texture* notEnoughGoldTexture;
+	blib::Texture* cloudTexture;
 	blib::TextureMap* conveyorBuildingTextureMap;
 
 	std::vector<blib::AnimatableSprite*> effects;
@@ -91,7 +92,7 @@ public:
 
 	union
 	{
-		blib::AnimatableSprite* buttons[5];
+		blib::AnimatableSprite* buttons[8];
 		struct  
 		{
 			blib::AnimatableSprite* wall;
@@ -99,6 +100,12 @@ public:
 			blib::AnimatableSprite* flag;
 			blib::AnimatableSprite* knights;
 			blib::AnimatableSprite* archers;
+			struct
+			{
+				blib::AnimatableSprite* powerSurge;
+				blib::AnimatableSprite* lightningBolt;
+				blib::AnimatableSprite* thunderstorm;
+			} magic;
 		};
 	} buttons;
 
@@ -140,12 +147,17 @@ public:
 		Wall,
 		Destroy,
 		Flag,
+		MagicThunderstorm
 	} mode;
 
 	blib::MouseState prevMouseState;
 	blib::MouseState beginMouseState;
 	glm::vec4 mousePos3d;
 	glm::vec4 mousePos3dBegin;
+
+	glm::vec3 thunderStormPosition;
+	std::vector<glm::vec4> thunderStormClouds;
+	float thunderStormTime = 0;
 
 	blib::RenderState renderState;
 	
