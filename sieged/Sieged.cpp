@@ -37,6 +37,7 @@ using blib::util::Log;
 
 std::vector<blib::VertexP3T2N3> cube;
 
+
 Sieged::Sieged()
 {
 	appSetup.renderer = blib::AppSetup::GlRenderer;
@@ -361,6 +362,7 @@ void Sieged::update(double elapsedTime)
 
 	if (mouseState.leftButton && !prevMouseState.leftButton)
 	{
+		beginMouseState = mouseState;
 		if (mouseState.position.y > 1080 - 128)
 		{
 			for (size_t i = 0; i < conveyorBuildings.size(); i++)
@@ -551,7 +553,7 @@ void Sieged::update(double elapsedTime)
 				}
 		}
 	}
-	if (mouseState.rightButton && !prevMouseState.rightButton)
+	if (mouseState.rightButton && !prevMouseState.rightButton && glm::distance(glm::vec2(beginMouseState.position), glm::vec2(mouseState.position)) < 4)
 		mode = BuildMode::Normal;
 
 

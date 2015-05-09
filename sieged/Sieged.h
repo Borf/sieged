@@ -122,8 +122,10 @@ class Sieged : public blib::App
 	
 	float stoneMasonFactor = 1;
 	float wallBuildSpeed = 1;
-	float lightDirection = 0;
 
+
+
+	float lightDirection = 0;
 	int maxFlagCount = 0;
 
 
@@ -143,6 +145,7 @@ class Sieged : public blib::App
 	} mode;
 
 	blib::MouseState prevMouseState;
+	blib::MouseState beginMouseState;
 	glm::vec4 mousePos3d;
 	glm::vec4 mousePos3dBegin;
 
