@@ -813,7 +813,7 @@ void Sieged::update(double elapsedTime)
 				{
 					if (glm::distance(e->position, s->position) < 5 && glm::distance(e->position, s->position) >  0.001f) // spotting range
 						e->movementDirection = glm::normalize(s->position - e->position);
-					if (glm::distance(e->position, s->position) < 0.5f) //attack range
+					if (glm::distance(e->position, s->position) < 0.25f) //attack range
 						attackTarget = s;
 				}
 			}
@@ -824,7 +824,7 @@ void Sieged::update(double elapsedTime)
 				{
 					blib::math::Rectangle buildRect(glm::vec2(b->position), b->buildingTemplate->size.x, b->buildingTemplate->size.y);
 					glm::vec2 projection = buildRect.projectClosest(e->position);
-					if (glm::length(projection - e->position) < 0.5f) // attack range
+					if (glm::length(projection - e->position) < 0.25f) // attack range
 						attackTarget = b;
 				}
 			}
@@ -843,9 +843,9 @@ void Sieged::update(double elapsedTime)
 
 			if (attackTarget && e->timeLeftForAttack <= 0)
 			{
-				e->timeLeftForAttack = 0.5f; // attack delay
+				e->timeLeftForAttack = gameSettings.enemyAttackDelay; // attack delay
 				e->lastAttackedEntity = attackTarget;
-				damage(attackTarget, 1);
+				damage(attackTarget, gameSettings.enemyDamage);
 			}
 
 			e->move(tiles, (float)elapsedTime);

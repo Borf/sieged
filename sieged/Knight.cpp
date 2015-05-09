@@ -2,11 +2,11 @@
 
 #include <blib/Math.h>
 
-Knight::Knight(glm::vec2 p)
+Knight::Knight(const glm::vec2 &p, const GameSettings &gameSettings)
 {
 	this->position = p; 
 	this->speed = blib::math::randomFloat(1.25f, 1.5f); 
-	health = 5; 
+	health = gameSettings.knightHealth; 
 	timeLeftForAttack = 0; 
 	modelState = NULL;
 }

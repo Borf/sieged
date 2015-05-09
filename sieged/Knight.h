@@ -2,6 +2,7 @@
 
 #include <glm/glm.hpp>
 #include "PlayerCharacter.h"
+#include "GameSettings.h"
 
 #include <blib/SkelAnimatedModel.h>
 
@@ -11,7 +12,7 @@ class Enemy;
 class Knight : public PlayerCharacter
 {
 public:
-	Knight(glm::vec2 p);
+	Knight(const glm::vec2 &p, const GameSettings &gameSettings);
 
 
 	blib::SkelAnimatedModel::State* modelState;
