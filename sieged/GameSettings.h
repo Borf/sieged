@@ -22,9 +22,11 @@ public:
 	int knightDamage = 1;
 	int knightHealth = 5;
 
+	float enemyAttackDelay = 1; // seconds
+	int enemyDamage = 1;
+	int enemyHealth = 5;
 	int goldPerSecondPerMineralMine = 5;
 	float goldInterest = 0.005f;
-
 
 	float wallBuildSpeed = 1; //derived
 	float archerStrength = 1; //derived
