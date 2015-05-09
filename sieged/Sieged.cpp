@@ -899,7 +899,7 @@ void Sieged::update(double elapsedTime)
 				}
 				if (b->buildingTemplate->type == BuildingTemplate::Barracks)
 				{
-					maxFlagCount = blib::linq::count(buildings, [](Building* b) { return b->buildingTemplate->type == BuildingTemplate::Barracks; }) * 1;
+					maxFlagCount = blib::linq::count(buildings, [](Building* b) { return b->buildingTemplate->type == BuildingTemplate::Barracks; }) * gameSettings.flagsPerBarracks;
 				}
 				if (b->buildingTemplate->type == BuildingTemplate::ArcheryRange)
 				{

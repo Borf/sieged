@@ -27,6 +27,9 @@ public:
 	int enemyHealth = 5;
 	int goldPerSecondPerMineralMine = 5;
 	float goldInterest = 0.005f;
+	
+	int flagsPerBarracks = 2;
+
 
 	float wallBuildSpeed = 1; //derived
 	float archerStrength = 1; //derived
