@@ -57,6 +57,9 @@
     <ClCompile Include="..\sieged\Archer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\sieged\GameSettings.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\sieged\Sieged.h">
@@ -87,6 +90,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\sieged\Archer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\sieged\GameSettings.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

@@ -69,10 +69,7 @@ void Sieged::init()
 
 
 
-	blib::json::Value settings = blib::util::FileSystem::getJson("assets/settings.json");
-	conveyorBuildingsPerSecond = settings["blueprintspersecond"];
-	stoneMasonFactor = settings["stonemasonfactor"];
-	gold = settings["start"]["gold"];
+	gold = gameSettings.startGold;
 
 	
 	blib::json::Value buildingDb = blib::util::FileSystem::getJson("assets/buildings.json");
@@ -276,7 +273,7 @@ void Sieged::init()
 
 
 	conveyorOffset = 0;
-	lastConveyorBuilding = 1 / conveyorBuildingsPerSecond;
+	lastConveyorBuilding = 1 / gameSettings.conveyorBuildingsPerSecond;
 	draggingBuilding = NULL;
 	conveyorDragIndex = -1;
 	conveyorBuildings.push_back(std::pair<BuildingTemplate*, float>(buildingTemplates[BuildingTemplate::TownHall], 1920.0f));
@@ -350,13 +347,13 @@ void Sieged::update(double elapsedTime)
 
 
 
-	conveyorOffset += (float)elapsedTime * conveyorSpeed;
+	conveyorOffset += (float)elapsedTime * gameSettings.conveyorSpeed;
 	while (conveyorOffset > 128)
 		conveyorOffset -= 128;
 
 	for (size_t i = 0; i < conveyorBuildings.size(); i++)
 	{
-		conveyorBuildings[i].second = glm::max(conveyorBuildings[i].second - (float)elapsedTime * conveyorSpeed, 64.0f * i);
+		conveyorBuildings[i].second = glm::max(conveyorBuildings[i].second - (float)elapsedTime * gameSettings.conveyorSpeed, 64.0f * i);
 	}
 
 
@@ -576,7 +573,7 @@ void Sieged::update(double elapsedTime)
 				}
 				rng -= b.second->rngWeight;
 			}
-			lastConveyorBuilding = 1 / conveyorBuildingsPerSecond;
+			lastConveyorBuilding = 1 / gameSettings.conveyorBuildingsPerSecond;
 		}
 	}
 
@@ -945,7 +942,7 @@ void Sieged::update(double elapsedTime)
 	{
 		if (b->buildTimeLeft > 0 && b->buildingTemplate->type == BuildingTemplate::Wall)
 		{
-			b->buildTimeLeft -= (float)elapsedTime * wallBuildSpeed;
+			b->buildTimeLeft -= (float)elapsedTime * gameSettings.wallBuildSpeed;
 			if (b->buildTimeLeft < 0)
 			{
 				b->buildTimeLeft = 0;
@@ -967,7 +964,7 @@ void Sieged::update(double elapsedTime)
 				if (b->buildingTemplate->type == BuildingTemplate::StoneMason)
 				{
 					buttons.wall->alphaTo(1.0f, 1);
-					wallBuildSpeed = 1 + (blib::linq::count(buildings, [](Building* b) { return b->buildingTemplate->type == BuildingTemplate::StoneMason; }) - 1) * stoneMasonFactor;
+					gameSettings.wallBuildSpeed = 1 + (blib::linq::count(buildings, [](Building* b) { return b->buildingTemplate->type == BuildingTemplate::StoneMason; }) - 1) * gameSettings.stoneMasonFactor;
 				}
 				if (b->buildingTemplate->type == BuildingTemplate::TownHall)
 				{

@@ -10,6 +10,7 @@
 
 #include "BuildingTemplate.h"
 #include "FlowMap.h"
+#include "GameSettings.h"
 
 namespace blib {
 	class Texture; class Animation; class FBO; class Shader; class AnimatableSprite; class Font; class Shader; class StaticModel;
@@ -41,6 +42,8 @@ class Sieged : public blib::App
 	std::vector<blib::math::Polygon> collisionWalls;
 	std::vector<Flag*> flags;
 
+
+	GameSettings gameSettings;
 
 	std::vector<Flag*> flagsToErase;
 
@@ -102,10 +105,8 @@ class Sieged : public blib::App
 	float cameraRotation;
 	float cameraAngle;
 
-	const float conveyorSpeed = 50;
 	float conveyorOffset;
 	int rngTotalWeight;
-	float conveyorBuildingsPerSecond;
 	float lastConveyorBuilding = 0;
 	float goldTimeLeft = 0;
 	bool calculatingPaths = false;
@@ -120,11 +121,6 @@ class Sieged : public blib::App
 
 
 	
-	float stoneMasonFactor = 1;
-	float wallBuildSpeed = 1;
-
-
-
 	float lightDirection = 0;
 	int maxFlagCount = 0;
 
