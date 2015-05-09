@@ -1,6 +1,7 @@
 #pragma once
 
 #include "PlayerCharacter.h"
+#include "GameSettings.h"
 
 #include <blib/SkelAnimatedModel.h>
 
@@ -10,7 +11,7 @@ class Enemy;
 class Archer : public PlayerCharacter
 {
 public:
-	Archer(glm::vec2 p);
+	Archer(const glm::vec2 &p, const GameSettings &gameSettings);
 	void calculateWallPosition(TileMap tiles);
 
 

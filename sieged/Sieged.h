@@ -119,7 +119,7 @@ public:
 	float threatLevel;
 	float speed = 1;
 
-	float nextEnemySpawn = 0;
+	float nextEnemySpawn = 60;
 
 
 	

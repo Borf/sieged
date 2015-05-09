@@ -612,9 +612,11 @@ void Sieged::update(double elapsedTime)
 		if (nextEnemySpawn < 0)
 		{
 			
-			int monstersThisThread = pow(gameSettings.threadLevelFactor * (threatLevel+1), gameSettings.threadLevelExponent);
+			int monstersThisThreatLevel = pow(gameSettings.threadLevelFactor * (int)(threatLevel+1), gameSettings.threadLevelExponent);
 
-			nextEnemySpawn = 60 / monstersThisThread;
+			nextEnemySpawn = 60.0f / monstersThisThreatLevel;
+
+			Log::out << "Thread level: " << threatLevel << ", Monsters: " << monstersThisThreatLevel << ", nextEnemySpawn: " << nextEnemySpawn << Log::newline;
 
 			while (true)
 			{
@@ -763,8 +765,8 @@ void Sieged::update(double elapsedTime)
 				{
 					a->modelState->stopAnimation("idle");
 					a->modelState->playAnimation("attack", 0.0f, true);
-					a->timeLeftForAttack = 2.5f; // attack delay
-					damageEnemy(attackTarget, 1);
+					a->timeLeftForAttack = gameSettings.archeryAttackDelay / gameSettings.archerStrength; // attack delay
+					damageEnemy(attackTarget, gameSettings.archeryDamage * gameSettings.archerStrength);
 				}
 			}
 
@@ -896,6 +898,10 @@ void Sieged::update(double elapsedTime)
 				if (b->buildingTemplate->type == BuildingTemplate::Barracks)
 				{
 					maxFlagCount = blib::linq::count(buildings, [](Building* b) { return b->buildingTemplate->type == BuildingTemplate::Barracks; }) * 1;
+				}
+				if (b->buildingTemplate->type == BuildingTemplate::ArcheryRange)
+				{
+					gameSettings.archerStrength = gameSettings.archeryRangeFactor * (blib::linq::count(buildings, [](Building* b) { return b->buildingTemplate->type == BuildingTemplate::ArcheryRange; }) - 1);
 				}
 			}
 			break;

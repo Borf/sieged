@@ -5,11 +5,11 @@
 #include <blib/Math.h>
 #include <blib/linq.h>
 
-Archer::Archer(glm::vec2 p)
+Archer::Archer(const glm::vec2 &p, const GameSettings &gameSettings)
 {
 	this->position = p;
 	this->speed = blib::math::randomFloat(1.25f, 1.5f);
-	health = 5;
+	health = gameSettings.archerHealth;
 	atFlag = false;
 	modelState = NULL;
 }
