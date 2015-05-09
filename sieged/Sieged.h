@@ -119,7 +119,7 @@ public:
 	float threatLevel;
 	float speed = 1;
 
-	float nextEnemySpawn = 0;
+	float nextEnemySpawn = 60;
 
 
 	
@@ -193,8 +193,7 @@ public:
 	void calcPaths();
 	void calcWalls();
 	void damage(Damagable* target, int damage);
-	void damageSoldier(Knight* attackTarget, int damage);
-	void damageEnemy(Enemy* enemy, int damage);
+
 
 
 	friend class Damagable; //protected spritebatch

@@ -356,6 +356,8 @@ void Sieged::update(double elapsedTime)
 		conveyorBuildings[i].second = glm::max(conveyorBuildings[i].second - (float)elapsedTime * gameSettings.conveyorSpeed, 64.0f * i);
 	}
 
+	if (mouseState.rightButton && !prevMouseState.leftButton)
+		beginMouseState = mouseState;
 
 	if (mouseState.leftButton && !prevMouseState.leftButton)
 	{
@@ -428,7 +430,7 @@ void Sieged::update(double elapsedTime)
 				mode = BuildMode::Normal;
 				Building* barracks = blib::linq::firstOrDefault<Building*>(buildings, [](Building* b) { return b->buildingTemplate->type == BuildingTemplate::Barracks; });
 				assert(barracks);
-				Archer* archer = new Archer(glm::vec2(barracks->position) + glm::vec2(1.5, barracks->buildingTemplate->size.y + 0.1f));
+				Archer* archer = new Archer(glm::vec2(barracks->position) + glm::vec2(1.5, barracks->buildingTemplate->size.y + 0.1f), gameSettings);
 				archer->modelState = knightModel->getNewState();
 				archer->modelState->playAnimation("idle");
 				archer->modelState->update(0.01f);
@@ -609,7 +611,12 @@ void Sieged::update(double elapsedTime)
 		nextEnemySpawn -= (float)elapsedTime;
 		if (nextEnemySpawn < 0)
 		{
-			nextEnemySpawn = 10 / (threatLevel + 1);
+			
+			int monstersThisThreatLevel = pow(gameSettings.threadLevelFactor * (int)(threatLevel+1), gameSettings.threadLevelExponent);
+
+			nextEnemySpawn = 60.0f / monstersThisThreatLevel;
+
+			Log::out << "Thread level: " << threatLevel << ", Monsters: " << monstersThisThreatLevel << ", nextEnemySpawn: " << nextEnemySpawn << Log::newline;
 
 			while (true)
 			{
@@ -684,8 +691,8 @@ void Sieged::update(double elapsedTime)
 
 			if (attackTarget && s->timeLeftForAttack <= 0)
 			{
-				s->timeLeftForAttack = 0.5f; // attack delay
-				damageEnemy(attackTarget, 1);
+				s->timeLeftForAttack = gameSettings.knightAttackDelay * gameSettings.knightStrength; // attack delay
+				damage(attackTarget, gameSettings.knightDamage * gameSettings.knightStrength);
 			}
 
 			glm::vec2 oldPos = s->position;
@@ -758,8 +765,8 @@ void Sieged::update(double elapsedTime)
 				{
 					a->modelState->stopAnimation("idle");
 					a->modelState->playAnimation("attack", 0.0f, true);
-					a->timeLeftForAttack = 2.5f; // attack delay
-					damageEnemy(attackTarget, 1);
+					a->timeLeftForAttack = gameSettings.archeryAttackDelay / gameSettings.archerStrength; // attack delay
+					damage(attackTarget, gameSettings.archeryDamage * gameSettings.archerStrength);
 				}
 			}
 
@@ -891,6 +898,14 @@ void Sieged::update(double elapsedTime)
 				if (b->buildingTemplate->type == BuildingTemplate::Barracks)
 				{
 					maxFlagCount = blib::linq::count(buildings, [](Building* b) { return b->buildingTemplate->type == BuildingTemplate::Barracks; }) * 1;
+				}
+				if (b->buildingTemplate->type == BuildingTemplate::ArcheryRange)
+				{
+					gameSettings.archerStrength = gameSettings.archeryRangeFactor * (blib::linq::count(buildings, [](Building* b) { return b->buildingTemplate->type == BuildingTemplate::ArcheryRange; }) - 1);
+				}
+				if (b->buildingTemplate->type == BuildingTemplate::BattleArena)
+				{
+					gameSettings.archerStrength = gameSettings.battleArenaFactor * (blib::linq::count(buildings, [](Building* b) { return b->buildingTemplate->type == BuildingTemplate::BattleArena; }) - 1);
 				}
 			}
 			break;
@@ -1619,47 +1634,31 @@ void Sieged::damage(Damagable* target, int damage)
 		Knight* asKnight = dynamic_cast<Knight*>(target);
 		if (asKnight)
 			blib::linq::deletewhere(knights, [asKnight](Knight* k) { return k == asKnight; });
-
-		Archer* asArcher = dynamic_cast<Archer*>(target);
-		if (asArcher)
-			blib::linq::deletewhere(archers, [asArcher](Archer* a) { return a == asArcher; });
-
-		Enemy* asEnemy = dynamic_cast<Enemy*>(target);
-		if (asEnemy)
-			blib::linq::deletewhere(enemies, [asEnemy](Enemy* e) { return e == asEnemy; });
-
-		Building* asBuilding = dynamic_cast<Building*>(target);
-		if (asBuilding)
+		else
 		{
-			for (int x = 0; x < asBuilding->buildingTemplate->size.x; x++)
-				for (int y = 0; y < asBuilding->buildingTemplate->size.y; y++)
-					tiles[asBuilding->position.x + x][asBuilding->position.y + y]->building = NULL;
-			if (asBuilding->buildingTemplate->type == BuildingTemplate::Wall)
-				calcWalls();
-			blib::linq::deletewhere(buildings, [asBuilding](Building* b) { return b == asBuilding; });
+			Archer* asArcher = dynamic_cast<Archer*>(target);
+			if (asArcher)
+				blib::linq::deletewhere(archers, [asArcher](Archer* a) { return a == asArcher; });
+			else
+			{
+				Enemy* asEnemy = dynamic_cast<Enemy*>(target);
+				if (asEnemy)
+					blib::linq::deletewhere(enemies, [asEnemy](Enemy* e) { return e == asEnemy; });
+				else
+				{
+					Building* asBuilding = dynamic_cast<Building*>(target);
+					if (asBuilding)
+					{
+						for (int x = 0; x < asBuilding->buildingTemplate->size.x; x++)
+							for (int y = 0; y < asBuilding->buildingTemplate->size.y; y++)
+								tiles[asBuilding->position.x + x][asBuilding->position.y + y]->building = NULL;
+						if (asBuilding->buildingTemplate->type == BuildingTemplate::Wall)
+							calcWalls();
+						blib::linq::deletewhere(buildings, [asBuilding](Building* b) { return b == asBuilding; });
+					}
+				}
+			}
 		}
-	}
-}
-
-
-void Sieged::damageSoldier(Knight* soldier, int damage)
-{
-	if (!soldier->isAlive())
-	{
-		for (auto e : enemies)
-			if (e->lastAttackedEntity == soldier)
-				e->lastAttackedEntity = NULL;
-	}
-}
-
-void Sieged::damageEnemy(Enemy* enemy, int damage)
-{
-	if (!enemy->isAlive())
-	{
-		for (auto s : knights)
-			if (s->lastAttackedEntity == enemy)
-				s->lastAttackedEntity = NULL;
-		blib::linq::deletewhere(enemies, [enemy](Enemy* e) { return e == enemy; });
 	}
 }
 
