@@ -34,3 +34,9 @@ void Building::drawHealthBar(Sieged* sieged)
 
 }
 
+bool Building::isAlive()
+{
+	float fac = (buildTimeLeft / buildingTemplate->buildTime);
+	return health >= fac * buildingTemplate->hitpoints;
+}
+

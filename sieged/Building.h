@@ -20,4 +20,6 @@ public:
 
 	void drawHealthBar(Sieged* sieged) override;;
 
+	virtual bool isAlive() override;
+
 };

@@ -320,6 +320,8 @@ void Sieged::update(double elapsedTime)
 		speed = 8;
 	if (keyState.isPressed(blib::Key::_7))
 		speed = 10;
+	if (keyState.isPressed(blib::Key::_8))
+		speed = 50;
 
 
 	cameraDistance -= (mouseState.scrollPosition - prevMouseState.scrollPosition) / 100.0f;
@@ -464,20 +466,8 @@ void Sieged::update(double elapsedTime)
 					for (int y = 0; y < draggingBuilding->size.y; y++)
 						if (tiles[pos.x + x][pos.y + y]->building)
 							ok = false;
-				
-				if (ok && gold < draggingBuilding->cost)
-				{
-					blib::AnimatableSprite* e = new blib::AnimatableSprite(notEnoughGoldTexture, glm::vec2(mouseState.position) - notEnoughGoldTexture->center);
-					e->resizeTo(glm::vec2(2,2), 1);
-					e->alphaTo(0, 1);
-					effects.push_back(e);
-					//ok = !ok;
-				}
-
-
 				if (ok)
 				{
-					gold -= draggingBuilding->cost;
 					buildings.push_back(new Building(pos, draggingBuilding, tiles));
 					conveyorBuildings.erase(conveyorBuildings.begin() + conveyorDragIndex);
 					calcPaths();
@@ -603,8 +593,8 @@ void Sieged::update(double elapsedTime)
 		while (goldTimeLeft < 0)
 		{
 			goldTimeLeft += 1;
-			gold += (blib::linq::count(buildings, [](Building* b) { return b->buildingTemplate->type == BuildingTemplate::MineralMine; })) * 5;
-			gold = glm::max(gold+1, (int)(gold * (1 + (blib::linq::count(buildings, [](Building* b) { return b->buildingTemplate->type == BuildingTemplate::Bank; })) * 0.005f)));
+			gold += (blib::linq::count(buildings, [](Building* b) { return b->buildingTemplate->type == BuildingTemplate::MineralMine; })) * gameSettings.goldPerSecondPerMineralMine;
+			gold = glm::max(gold+1, (int)(gold * (1 + (blib::linq::count(buildings, [](Building* b) { return b->buildingTemplate->type == BuildingTemplate::Bank; })) * gameSettings.goldInterest)));
 		}
 
 
@@ -867,6 +857,11 @@ void Sieged::update(double elapsedTime)
 	{
 		if (b->buildTimeLeft > 0 && b->buildingTemplate->type == BuildingTemplate::Wall)
 		{
+			if (b->buildTimeLeft == b->buildingTemplate->buildTime)
+				if (gold >= b->buildingTemplate->cost)
+					gold -= b->buildingTemplate->cost;
+				else
+					continue;
 			b->buildTimeLeft -= (float)elapsedTime * gameSettings.wallBuildSpeed;
 			if (b->buildTimeLeft < 0)
 			{
@@ -880,6 +875,13 @@ void Sieged::update(double elapsedTime)
 	{
 		if (b->buildTimeLeft > 0 && b->buildingTemplate->type != BuildingTemplate::Wall)
 		{
+			if (b->buildTimeLeft == b->buildingTemplate->buildTime)
+				if (gold >= b->buildingTemplate->cost)
+					gold -= b->buildingTemplate->cost;
+				else
+					continue;
+
+
 			b->buildTimeLeft -= (float)elapsedTime;
 			if (b->buildTimeLeft < 0)
 			{

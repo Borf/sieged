@@ -10,7 +10,7 @@ class Damagable
 public:
 	int health;
 
-	bool isAlive()
+	virtual bool isAlive()
 	{
 		return health > 0;
 	}
