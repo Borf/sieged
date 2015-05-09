@@ -676,7 +676,7 @@ void Sieged::update(double elapsedTime)
 
 			if (s->lastAttackedEntity)
 			{
-				Enemy* asEnemy = static_cast<Enemy*>(s->lastAttackedEntity);
+				Enemy* asEnemy = dynamic_cast<Enemy*>(s->lastAttackedEntity);
 				if (asEnemy)
 					if (glm::distance(asEnemy->position, s->position) < 0.5f)
 						attackTarget = asEnemy;
@@ -748,7 +748,7 @@ void Sieged::update(double elapsedTime)
 
 				if (a->lastAttackedEntity)
 				{
-					Enemy* asEnemy = static_cast<Enemy*>(a->lastAttackedEntity);
+					Enemy* asEnemy = dynamic_cast<Enemy*>(a->lastAttackedEntity);
 					if (asEnemy)
 						if (glm::distance(asEnemy->position, a->position) < 15.0f)//attackrange
 							attackTarget = asEnemy;
@@ -820,6 +820,17 @@ void Sieged::update(double elapsedTime)
 						attackTarget = s;
 				}
 			}
+
+			if (!attackTarget)
+			{
+				for (Building* b : buildings)
+				{
+					blib::math::Rectangle buildRect(glm::vec2(b->position), b->buildingTemplate->size.x, b->buildingTemplate->size.y);
+					glm::vec2 projection = buildRect.projectClosest(e->position);
+					if (glm::length(projection - e->position) < 0.5f) // attack range
+						attackTarget = b;
+				}
+			}
 			
 			e->timeLeftForAttack -= (float)elapsedTime;
 			if (e->timeLeftForAttack <= 0)
@@ -827,7 +838,7 @@ void Sieged::update(double elapsedTime)
 
 			if (e->lastAttackedEntity)
 			{
-				PlayerCharacter* asPlayerCharacter = static_cast<PlayerCharacter*>(e->lastAttackedEntity);
+				PlayerCharacter* asPlayerCharacter = dynamic_cast<PlayerCharacter*>(e->lastAttackedEntity);
 				if (asPlayerCharacter)
 					if (glm::distance(asPlayerCharacter->position, e->position) < 0.5f)
 						attackTarget = asPlayerCharacter;
@@ -970,15 +981,6 @@ void Sieged::draw()
 
 
 	spriteBatch->begin();
-
-
-	for (size_t i = 0; i < enemies.size(); i++)
-	{
-		Enemy* e = enemies[i];
-		glm::vec3 position = glm::project(glm::vec3(e->position.x, 1, e->position.y), cameraMatrix, projectionMatrix, glm::uvec4(0, 0, 1920, 1079));
-		if (position.z < 1 && position.z > 0)
-			spriteBatch->draw(font, std::to_string(i) + " -> " + std::to_string(e->health), blib::math::easyMatrix(glm::vec2(position.x, 1079 - position.y), 0, 2));
-	}
 
 
 
@@ -1592,11 +1594,53 @@ void Sieged::damage(Damagable* target, int damage)
 {
 	target->health -= damage;
 
-	if (static_cast<Knight*>(target))
-		damageSoldier(static_cast<Knight*>(target), damage);
-	else if (static_cast<Enemy*>(target))
-		damageEnemy(static_cast<Enemy*>(target), damage);
+	if (!target->isAlive())
+	{
+		for (auto s : knights)
+			if (s->lastAttackedEntity == target)
+				s->lastAttackedEntity = NULL;
+		for (auto s : archers)
+			if (s->lastAttackedEntity == target)
+				s->lastAttackedEntity = NULL;
+		for (auto s : enemies)
+			if (s->lastAttackedEntity == target)
+				s->lastAttackedEntity = NULL;
+
+
+		PlayerCharacter* asPc = dynamic_cast<PlayerCharacter*>(target);
+		if (asPc)
+			if (asPc->flag)
+			{
+				blib::linq::removewhere(asPc->flag->knights, [asPc](Knight* s) { return s == asPc; });
+				blib::linq::removewhere(asPc->flag->archers, [asPc](Archer* a) { return a == asPc; });
+			}
+
+
+		Knight* asKnight = dynamic_cast<Knight*>(target);
+		if (asKnight)
+			blib::linq::deletewhere(knights, [asKnight](Knight* k) { return k == asKnight; });
+
+		Archer* asArcher = dynamic_cast<Archer*>(target);
+		if (asArcher)
+			blib::linq::deletewhere(archers, [asArcher](Archer* a) { return a == asArcher; });
+
+		Enemy* asEnemy = dynamic_cast<Enemy*>(target);
+		if (asEnemy)
+			blib::linq::deletewhere(enemies, [asEnemy](Enemy* e) { return e == asEnemy; });
+
+		Building* asBuilding = dynamic_cast<Building*>(target);
+		if (asBuilding)
+		{
+			for (int x = 0; x < asBuilding->buildingTemplate->size.x; x++)
+				for (int y = 0; y < asBuilding->buildingTemplate->size.y; y++)
+					tiles[asBuilding->position.x + x][asBuilding->position.y + y]->building = NULL;
+			if (asBuilding->buildingTemplate->type == BuildingTemplate::Wall)
+				calcWalls();
+			blib::linq::deletewhere(buildings, [asBuilding](Building* b) { return b == asBuilding; });
+		}
+	}
 }
+
 
 void Sieged::damageSoldier(Knight* soldier, int damage)
 {
@@ -1605,9 +1649,6 @@ void Sieged::damageSoldier(Knight* soldier, int damage)
 		for (auto e : enemies)
 			if (e->lastAttackedEntity == soldier)
 				e->lastAttackedEntity = NULL;
-		if (soldier->flag)
-			blib::linq::removewhere(soldier->flag->knights, [soldier](Knight* s) { return s == soldier; });
-		blib::linq::deletewhere(knights, [soldier](Knight* s) { return s == soldier; });
 	}
 }
 

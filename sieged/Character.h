@@ -26,5 +26,5 @@ public:
 	void move(TileMap& tiles, float elapsedTime, bool ignoreCollision = false);
 	glm::vec2 directionFromFlowMap();
 
-	void drawHealthBar(Sieged* sieged) override;;
+	void drawHealthBar(Sieged* sieged) override;
 };

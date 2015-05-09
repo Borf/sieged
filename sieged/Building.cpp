@@ -3,6 +3,9 @@
 #include "Tile.h"
 #include "Sieged.h"
 
+#include <blib/Window.h>
+
+
 #include <glm/gtc/matrix_transform.hpp>
 
 Building::Building(const glm::ivec2 position, BuildingTemplate* buildingTemplate, TileMap& tilemap)
@@ -21,7 +24,7 @@ void Building::drawHealthBar(Sieged* sieged)
 	if (health == buildingTemplate->hitpoints && buildTimeLeft == 0)
 		return;
 
-	glm::vec3 p = glm::project(glm::vec3(position.x + buildingTemplate->size.x / 2.0f, 4, position.y + buildingTemplate->size.y / 2.0f), sieged->cameraMatrix, sieged->projectionMatrix, glm::uvec4(0, 0, 1920, 1079));
+	glm::vec3 p = glm::project(glm::vec3(position.x + buildingTemplate->size.x / 2.0f, 4, position.y + buildingTemplate->size.y / 2.0f), sieged->cameraMatrix, sieged->projectionMatrix, glm::uvec4(0, 0, sieged->window->getWidth(), sieged->window->getHeight()));
 
 	float buildFactor = 1.0f - glm::min(1.0f, buildTimeLeft / buildingTemplate->buildTime);
 	float healthFactor = health / (float)buildingTemplate->hitpoints * buildFactor;

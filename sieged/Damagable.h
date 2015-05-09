@@ -12,7 +12,7 @@ public:
 
 	bool isAlive()
 	{
-		return health <= 0;
+		return health > 0;
 	}
 
 	virtual void damage(int dmg)

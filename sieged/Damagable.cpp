@@ -9,6 +9,8 @@
 
 void Damagable::drawHealthBarActual(Sieged* sieged, const glm::vec3& position, float healthbarSize, float healthFactor)
 {
+	if (position.z > 1 || position.z < 0)
+		return;
 	float barWidth = healthbarSize / sieged->cameraDistance;
 	float barHeight = glm::max(300 / sieged->cameraDistance, 4.0f);
 
