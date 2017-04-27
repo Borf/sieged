@@ -4,3 +4,5 @@ vs2013/Debug/
 vs2013/Release/
 Sieged.rar
 assets/models/*.json
+*.suo
+unity_sieged/Library/metadata/

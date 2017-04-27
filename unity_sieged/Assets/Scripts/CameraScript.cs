@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-public class Camera : MonoBehaviour {
+public class CameraScript : MonoBehaviour {
 
     public float PanSpeed = 5;
 
