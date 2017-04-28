@@ -6,8 +6,8 @@ using UnityEngine;
 
 public class CityBehaviorScript : MonoBehaviour {
 
-    private Tile[,] Grid;
     private List<GameObject> Buildings;
+    private int[,] Neighbors;
 
     private List<Point> offsets = new List<Point> { new Point(0, 1), new Point(0, -1), new Point(1, 0), new Point(-1, 0) };
 
@@ -16,21 +16,21 @@ public class CityBehaviorScript : MonoBehaviour {
     public List<GameObject> WallTemplates;
     public List<GameObject> TowerTemplates;
 
+    public Grid Grid { get; set; }
 
     // Use this for initialization
     void Start () {
 
-        Grid = new Tile[100, 100];
+        Grid = new Grid(100, 100);
+
         Buildings = new List<GameObject>();
 
-        var x = Grid.GetLength(0) / 2;
-        var y = Grid.GetLength(1) / 2;
-        SpawnBuilding(x, y, TownhallTemplate);
+        SpawnBuilding(Grid.Width/2, Grid.Height/2, TownhallTemplate, Builder.Generated);
 
         StartCoroutine(spawnStuff());
     }
 
-    public void SpawnBuilding(int left, int top, GameObject template)
+    public void SpawnBuilding(int left, int top, GameObject template, Builder builder)
     {
         if (!canSpawn(left, top, template))
             return;
@@ -45,7 +45,7 @@ public class CityBehaviorScript : MonoBehaviour {
         {
             foreach (var y in Enumerable.Range(top, buildingTemplate.Height))
             {
-                Grid[x, y] = new Tile();
+                Grid.Tiles[x, y].Builder = builder;
             }
         }
     }
@@ -57,7 +57,7 @@ public class CityBehaviorScript : MonoBehaviour {
         {
             foreach (var y in Enumerable.Range(top, buildingTemplate.Height))
             {
-                if (Grid[x, y] != null)
+                if (Grid.Tiles[x, y].HasBuilding)
                     return false;
             }
         }
@@ -66,33 +66,19 @@ public class CityBehaviorScript : MonoBehaviour {
 
     internal void changeToTower(Point pos)
     {
-        if (pos.X < 0 || pos.X >= Grid.GetLength(0) ||
-            pos.Y < 0 || pos.Y >= Grid.GetLength(1))
+        if (Grid.IsOutOfBounds(pos))
             return;
+
         //if (Grid[pos.X, pos.Y].Building.Template != wallTemplates.First()) //TODO: if is wall
         //    return;
 
-
-        Grid[pos.X, pos.Y] = null;
-
-        SpawnBuilding(pos.X, pos.Y, TowerTemplates.First());
-
-        
-
-
-    }
-
-    internal bool isEmpty(Point pos)
-    {
-        if (pos.X < 0 || pos.X >= Grid.GetLength(0) ||
-            pos.Y < 0 || pos.Y >= Grid.GetLength(1))
-            return false;
-        return Grid[pos.X, pos.Y] == null;
+        Grid.Tiles[pos.X, pos.Y].Builder = Builder.None;
+        SpawnBuilding(pos.X, pos.Y, TowerTemplates.First(), Builder.Player);
     }
 
     internal void SpawnWall(int x, int y)
     {
-        SpawnBuilding(x, y, WallTemplates.First());
+        SpawnBuilding(x, y, WallTemplates.First(), Builder.Player);
     }
 
     // Update is called once per frame
@@ -109,10 +95,10 @@ public class CityBehaviorScript : MonoBehaviour {
                 var neighbors = GetEmptyNeighbors();
                 var pos = neighbors[UnityEngine.Random.Range(0, neighbors.Count - 1)];
 
-                SpawnBuilding(pos.X, pos.Y, BuildingTemplates.First());
+                SpawnBuilding(pos.X, pos.Y, BuildingTemplates.First(), Builder.Generated);
             }
 
-            yield return new WaitForSeconds(1);
+            yield return new WaitForSeconds(0.001f);
         }
     }
 
@@ -120,23 +106,22 @@ public class CityBehaviorScript : MonoBehaviour {
     {
         var result = new List<Point>();
 
-        for(int x = 0; x < Grid.GetLength(0); x++)
+        for(int x = 0; x < Grid.Width; x++)
         {
-            for (int y = 0; y < Grid.GetLength(1); y++)
+            for (int y = 0; y < Grid.Height; y++)
             {
                 var pos = new Point(x, y);
-                if (Grid[x, y] == null)
+                if (!Grid.Tiles[x, y].HasBuilding)
                 {
                     bool hasNeighbor = false;
                     foreach (var offset in offsets)
                     {
                         var newPos = pos + offset;
 
-                        if (newPos.X < 0 || newPos.X >= Grid.GetLength(0) ||
-                            newPos.Y < 0 || newPos.Y >= Grid.GetLength(1))
+                        if (Grid.IsOutOfBounds(newPos))
                             continue;
 
-                        if (Grid[newPos.X, newPos.Y] != null)
+                        if (Grid.Tiles[newPos.X, newPos.Y].HasBuilding)
                         {
                             hasNeighbor = true;
                             break;

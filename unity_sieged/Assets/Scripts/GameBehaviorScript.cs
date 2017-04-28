@@ -44,7 +44,7 @@ public class GameBehaviorScript : MonoBehaviour {
 
                     if (MouseMode == MouseMode.Walls)
                     {
-                        if (cityScript.isEmpty(hitPos) && Money >= 10)
+                        if (cityScript.Grid.IsEmpty(hitPos) && Money >= 10)
                         {
                             Money -= 10;
                             cityScript.SpawnWall(hitPos.X, hitPos.Y);

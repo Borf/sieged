@@ -1,5 +1,14 @@
 ﻿public class Tile
 {
-    public Building Building;
+    public Builder Builder;
+    public int Neighbors;
 
+    public bool HasBuilding { get { return Builder != Builder.None; } }
+}
+
+public enum Builder
+{
+    None,
+    Player,
+    Generated
 }
