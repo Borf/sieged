@@ -1,6 +1,7 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 public class GameBehaviorScript : MonoBehaviour {
@@ -29,7 +30,7 @@ public class GameBehaviorScript : MonoBehaviour {
         MoneyLabel.text = "Munney: " + Money.ToString();
 
 
-        if (MouseMode != MouseMode.Nothing)
+        if (MouseMode != MouseMode.Nothing && !EventSystem.current.IsPointerOverGameObject())
         {
             RaycastHit hit;
             Ray ray = this.camera.ScreenPointToRay(Input.mousePosition);
@@ -50,13 +51,17 @@ public class GameBehaviorScript : MonoBehaviour {
                             cityScript.SpawnWall(hitPos.X, hitPos.Y);
                         }
                     }
-                    else if(MouseMode == MouseMode.Tower)
+                    else if (MouseMode == MouseMode.Tower)
                     {
                         if (Money >= 25)
                         {
                             cityScript.changeToTower(hitPos);
                             Money -= 25;
                         }
+                    }
+                    else if (MouseMode == MouseMode.Destroy)
+                    {
+                        cityScript.DestroyBuilding(hitPos);
                     }
                 }
             }
@@ -65,17 +70,21 @@ public class GameBehaviorScript : MonoBehaviour {
 
     }
 
+    public void SetEditMode(string strmode)
+    {
+        MouseMode mode = (MouseMode)MouseMode.Parse(typeof(MouseMode), strmode); //ewwww
+        if (MouseMode == mode)
+        {
+            MouseMode = MouseMode.Nothing;
+            cursorObject.SetActive(false);
+        }
+        else
+        {
+            MouseMode = mode;
+            cursorObject.SetActive(true);
+        }
+    }
 
-    public void ClickWalls()
-    {
-        MouseMode = MouseMode.Walls;
-        cursorObject.SetActive(true);
-    }
-    public void ClickTower()
-    {
-        MouseMode = MouseMode.Tower;
-        cursorObject.SetActive(true);
-    }
 
 
 }
@@ -83,6 +92,7 @@ public class GameBehaviorScript : MonoBehaviour {
 public enum MouseMode
 {
     Nothing,
+    Destroy,
     Walls,
     Tower,
 };

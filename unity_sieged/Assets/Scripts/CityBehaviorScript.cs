@@ -8,6 +8,8 @@ public class CityBehaviorScript : MonoBehaviour {
 
     private List<GameObject> Buildings;
     private int[,] Neighbors;
+    public float delay = 0.5f;
+
 
     private List<Point> offsets = new List<Point> { new Point(0, 1), new Point(0, -1), new Point(1, 0), new Point(-1, 0) };
 
@@ -38,14 +40,19 @@ public class CityBehaviorScript : MonoBehaviour {
         var buildingTemplate = template.GetComponent<BuildingTemplate>();
         var building = Instantiate(template, new Vector3(left + buildingTemplate.Width / 2.0f, 0, top + buildingTemplate.Height / 2.0f), Quaternion.identity, gameObject.transform);
         building.isStatic = true;
-
         Buildings.Add(building);
+
+        //buildings have random rotation ;)
+        if (BuildingTemplates.Contains(template))
+            building.transform.Rotate(new Vector3(0, UnityEngine.Random.Range(0, 360), 0));
+
 
         foreach (var x in Enumerable.Range(left, buildingTemplate.Width))
         {
             foreach (var y in Enumerable.Range(top, buildingTemplate.Height))
             {
-                Grid.Tiles[x, y].Builder = builder;
+                Grid[x, y].Builder = builder;
+                Grid[x, y].Building = building;
             }
         }
     }
@@ -57,11 +64,19 @@ public class CityBehaviorScript : MonoBehaviour {
         {
             foreach (var y in Enumerable.Range(top, buildingTemplate.Height))
             {
-                if (Grid.Tiles[x, y].HasBuilding)
+                if (Grid[x, y].HasBuilding)
                     return false;
             }
         }
         return true;
+    }
+
+    internal void DestroyBuilding(Point pos)
+    {
+        if (Grid.IsOutOfBounds(pos))
+            return;
+        GameObject.Destroy(Grid[pos].Building);
+        Grid[pos].Builder = Builder.None;
     }
 
     internal void changeToTower(Point pos)
@@ -72,7 +87,7 @@ public class CityBehaviorScript : MonoBehaviour {
         //if (Grid[pos.X, pos.Y].Building.Template != wallTemplates.First()) //TODO: if is wall
         //    return;
 
-        Grid.Tiles[pos.X, pos.Y].Builder = Builder.None;
+        Grid[pos].Builder = Builder.None;
         SpawnBuilding(pos.X, pos.Y, TowerTemplates.First(), Builder.Player);
     }
 
@@ -98,7 +113,7 @@ public class CityBehaviorScript : MonoBehaviour {
                 SpawnBuilding(pos.X, pos.Y, BuildingTemplates.First(), Builder.Generated);
             }
 
-            yield return new WaitForSeconds(0.001f);
+            yield return new WaitForSeconds(delay);
         }
     }
 
@@ -111,7 +126,7 @@ public class CityBehaviorScript : MonoBehaviour {
             for (int y = 0; y < Grid.Height; y++)
             {
                 var pos = new Point(x, y);
-                if (!Grid.Tiles[x, y].HasBuilding)
+                if (!Grid[x, y].HasBuilding)
                 {
                     bool hasNeighbor = false;
                     foreach (var offset in offsets)
@@ -121,7 +136,7 @@ public class CityBehaviorScript : MonoBehaviour {
                         if (Grid.IsOutOfBounds(newPos))
                             continue;
 
-                        if (Grid.Tiles[newPos.X, newPos.Y].HasBuilding)
+                        if (Grid[newPos.X, newPos.Y].HasBuilding)
                         {
                             hasNeighbor = true;
                             break;
