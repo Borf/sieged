@@ -90,6 +90,10 @@ public class CityBehaviorScript : MonoBehaviour {
             for (int i = 0; i < 50; i++)
             {
                 var neighbors = Grid.GetEmptyNeighbors();
+
+                if (!neighbors.Any())
+                    break;
+
                 var pos = neighbors[UnityEngine.Random.Range(0, neighbors.Count - 1)];
                 SpawnBuilding(pos.X, pos.Y, BuildingTemplates.First(), Builder.Generated);
             }
