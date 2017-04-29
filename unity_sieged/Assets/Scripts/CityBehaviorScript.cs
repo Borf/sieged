@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections;
+﻿using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
@@ -7,9 +6,6 @@ using UnityEngine;
 public class CityBehaviorScript : MonoBehaviour {
 
     private List<GameObject> Buildings;
-    private int[,] Neighbors;
-
-    private List<Point> offsets = new List<Point> { new Point(0, 1), new Point(0, -1), new Point(1, 0), new Point(-1, 0) };
 
     public GameObject TownhallTemplate;
     public List<GameObject> BuildingTemplates;
@@ -30,9 +26,15 @@ public class CityBehaviorScript : MonoBehaviour {
         StartCoroutine(spawnStuff());
     }
 
+    // Update is called once per frame
+    void Update()
+    {
+
+    }
+
     public void SpawnBuilding(int left, int top, GameObject template, Builder builder)
     {
-        if (!canSpawn(left, top, template))
+        if (!CanSpawn(left, top, template))
             return;
 
         var buildingTemplate = template.GetComponent<BuildingTemplate>();
@@ -45,12 +47,12 @@ public class CityBehaviorScript : MonoBehaviour {
         {
             foreach (var y in Enumerable.Range(top, buildingTemplate.Height))
             {
-                Grid.Tiles[x, y].Builder = builder;
+                Grid.UpdateTile(new Point(x, y), builder);
             }
         }
     }
 
-    private bool canSpawn(int left, int top, GameObject template)
+    private bool CanSpawn(int left, int top, GameObject template)
     {
         var buildingTemplate = template.GetComponent<BuildingTemplate>();
         foreach (var x in Enumerable.Range(left, buildingTemplate.Width))
@@ -72,7 +74,7 @@ public class CityBehaviorScript : MonoBehaviour {
         //if (Grid[pos.X, pos.Y].Building.Template != wallTemplates.First()) //TODO: if is wall
         //    return;
 
-        Grid.Tiles[pos.X, pos.Y].Builder = Builder.None;
+        Grid.UpdateTile(pos, Builder.None);
         SpawnBuilding(pos.X, pos.Y, TowerTemplates.First(), Builder.Player);
     }
 
@@ -81,57 +83,18 @@ public class CityBehaviorScript : MonoBehaviour {
         SpawnBuilding(x, y, WallTemplates.First(), Builder.Player);
     }
 
-    // Update is called once per frame
-    void Update () {
-		
-	}
-
     public IEnumerator spawnStuff()
     {
         while(true)
         {
-            for (int i = 0; i < 1; i++)
+            for (int i = 0; i < 50; i++)
             {
-                var neighbors = GetEmptyNeighbors();
+                var neighbors = Grid.GetEmptyNeighbors();
                 var pos = neighbors[UnityEngine.Random.Range(0, neighbors.Count - 1)];
-
                 SpawnBuilding(pos.X, pos.Y, BuildingTemplates.First(), Builder.Generated);
             }
 
             yield return new WaitForSeconds(0.001f);
         }
-    }
-
-    public List<Point> GetEmptyNeighbors()
-    {
-        var result = new List<Point>();
-
-        for(int x = 0; x < Grid.Width; x++)
-        {
-            for (int y = 0; y < Grid.Height; y++)
-            {
-                var pos = new Point(x, y);
-                if (!Grid.Tiles[x, y].HasBuilding)
-                {
-                    bool hasNeighbor = false;
-                    foreach (var offset in offsets)
-                    {
-                        var newPos = pos + offset;
-
-                        if (Grid.IsOutOfBounds(newPos))
-                            continue;
-
-                        if (Grid.Tiles[newPos.X, newPos.Y].HasBuilding)
-                        {
-                            hasNeighbor = true;
-                            break;
-                        }
-                    }
-                    if (hasNeighbor)
-                        result.Add(pos);
-                }
-            }
-        }
-        return result;
     }
 }
