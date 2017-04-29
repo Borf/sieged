@@ -12,20 +12,20 @@ public class GameBehaviorScript : MonoBehaviour {
     public GameObject city;
 
     private CityBehaviorScript cityScript;
-    private Camera camera;
+    public GameObject myCamera;
 
     MouseMode MouseMode;
 
 
 	// Use this for initialization
 	void Start () {
-        this.camera = GameObject.Find("Camera").GetComponent<Camera>();
         this.MouseMode = MouseMode.Nothing;
         cityScript = city.GetComponent<CityBehaviorScript>();
     }
-	
-	// Update is called once per frame
-	void Update () {
+
+
+    // Update is called once per frame
+    void Update () {
         Money++;
         MoneyLabel.text = "Munney: " + Money.ToString();
 
@@ -33,7 +33,7 @@ public class GameBehaviorScript : MonoBehaviour {
         if (MouseMode != MouseMode.Nothing && !EventSystem.current.IsPointerOverGameObject())
         {
             RaycastHit hit;
-            Ray ray = this.camera.ScreenPointToRay(Input.mousePosition);
+            Ray ray = this.myCamera.GetComponent<Camera>().ScreenPointToRay(Input.mousePosition);
 
             if (Physics.Raycast(ray, out hit))
             {
