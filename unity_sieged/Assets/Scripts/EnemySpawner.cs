@@ -23,9 +23,11 @@ public class EnemySpawner : MonoBehaviour {
         {
             float angle = Random.Range(0, Mathf.PI * 2);
 
-            Vector3 position = new Vector3(250,0,250) + new Vector3(Mathf.Cos(angle), 0, Mathf.Sin(angle)) * 50.0f;
+            Vector3 position = this.transform.position + new Vector3(Mathf.Cos(angle), 0, Mathf.Sin(angle)) * 50.0f;
 
-            GameObject newEnemy = Instantiate(SpawnMonster, position, Quaternion.identity) as GameObject;
+            GameObject newEnemy = Instantiate(SpawnMonster, position, Quaternion.identity, gameObject.transform) as GameObject;
+
+            newEnemy.GetComponent<EnemyAI>().target = this.transform.position;
 
             
 
