@@ -1,13 +1,10 @@
-﻿using System;
-using System.Collections;
+﻿using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 
 public class CityBehaviorScript : MonoBehaviour {
 
-    private List<GameObject> Buildings;
-    private int[,] Neighbors;
     public float delay = 0.5f;
 
 
@@ -24,23 +21,25 @@ public class CityBehaviorScript : MonoBehaviour {
     void Start () {
 
         Grid = new Grid(100, 100);
-
-        Buildings = new List<GameObject>();
-
         SpawnBuilding(Grid.Width/2, Grid.Height/2, TownhallTemplate, Builder.Generated);
 
         StartCoroutine(spawnStuff());
     }
 
+    // Update is called once per frame
+    void Update()
+    {
+
+    }
+
     public void SpawnBuilding(int left, int top, GameObject template, Builder builder)
     {
-        if (!canSpawn(left, top, template))
+        if (!CanSpawn(left, top, template))
             return;
 
         var buildingTemplate = template.GetComponent<BuildingTemplate>();
         var building = Instantiate(template, new Vector3(left + buildingTemplate.Width / 2.0f, 0, top + buildingTemplate.Height / 2.0f), Quaternion.identity, gameObject.transform);
         building.isStatic = true;
-        Buildings.Add(building);
 
         //buildings have random rotation ;)
         if (BuildingTemplates.Contains(template))
@@ -51,13 +50,12 @@ public class CityBehaviorScript : MonoBehaviour {
         {
             foreach (var y in Enumerable.Range(top, buildingTemplate.Height))
             {
-                Grid[x, y].Builder = builder;
-                Grid[x, y].Building = building;
+                Grid.UpdateTile(new Point(x, y), builder, building);
             }
         }
     }
 
-    private bool canSpawn(int left, int top, GameObject template)
+    private bool CanSpawn(int left, int top, GameObject template)
     {
         var buildingTemplate = template.GetComponent<BuildingTemplate>();
         foreach (var x in Enumerable.Range(left, buildingTemplate.Width))
@@ -75,8 +73,16 @@ public class CityBehaviorScript : MonoBehaviour {
     {
         if (Grid.IsOutOfBounds(pos))
             return;
-        GameObject.Destroy(Grid[pos].Building);
-        Grid[pos].Builder = Builder.None;
+        if (Grid.IsEmpty(pos))
+            return;
+
+        GameObject building = Grid[pos].Building;
+        BuildingTemplate template = building.GetComponent<BuildingTemplate>();
+
+        for(int x = 0; x < template.Width; x++)
+            for(int y = 0; y < template.Height; y++)
+                Grid.UpdateTile(pos + new Point(x,y), Builder.None, null);
+        GameObject.Destroy(building);
     }
 
     internal void changeToTower(Point pos)
@@ -87,7 +93,7 @@ public class CityBehaviorScript : MonoBehaviour {
         //if (Grid[pos.X, pos.Y].Building.Template != wallTemplates.First()) //TODO: if is wall
         //    return;
 
-        Grid[pos].Builder = Builder.None;
+        Grid.UpdateTile(pos, Builder.None, null);
         SpawnBuilding(pos.X, pos.Y, TowerTemplates.First(), Builder.Player);
     }
 
@@ -96,20 +102,18 @@ public class CityBehaviorScript : MonoBehaviour {
         SpawnBuilding(x, y, WallTemplates.First(), Builder.Player);
     }
 
-    // Update is called once per frame
-    void Update () {
-		
-	}
-
     public IEnumerator spawnStuff()
     {
         while(true)
         {
             for (int i = 0; i < 1; i++)
             {
-                var neighbors = GetEmptyNeighbors();
-                var pos = neighbors[UnityEngine.Random.Range(0, neighbors.Count - 1)];
+                var neighbors = Grid.GetEmptyNeighbors();
 
+                if (!neighbors.Any())
+                    break;
+
+                var pos = neighbors[UnityEngine.Random.Range(0, neighbors.Count - 1)];
                 SpawnBuilding(pos.X, pos.Y, BuildingTemplates.First(), Builder.Generated);
             }
 
