@@ -15,6 +15,8 @@ public class CityBehaviorScript : MonoBehaviour {
     public List<GameObject> WallTemplates;
     public List<GameObject> TowerTemplates;
 
+    private HashSet<Point> buildPositions = new HashSet<Point>();
+
     public Grid Grid { get; set; }
 
     // Use this for initialization
@@ -46,13 +48,24 @@ public class CityBehaviorScript : MonoBehaviour {
             building.transform.Rotate(new Vector3(0, UnityEngine.Random.Range(0, 360), 0));
 
 
+        //borfcode: is this more efficient?
+        List<Point> newPoints = new List<Point>();
         foreach (var x in Enumerable.Range(left, buildingTemplate.Width))
         {
             foreach (var y in Enumerable.Range(top, buildingTemplate.Height))
             {
                 Grid.UpdateTile(new Point(x, y), builder, building);
+                newPoints.Add(new Point(x, y));
             }
         }
+
+        HashSet<Point> newNeighbours = new HashSet<Point>();
+        foreach (Point p in newPoints)
+            foreach (Point offset in offsets)
+                if (!newPoints.Contains(p + offset))
+                    newNeighbours.Add(p + offset);
+        buildPositions.RemoveWhere(p => newPoints.Contains(p));
+        buildPositions.UnionWith(newNeighbours);
     }
 
     private bool CanSpawn(int left, int top, GameObject template)
@@ -106,14 +119,16 @@ public class CityBehaviorScript : MonoBehaviour {
     {
         while(true)
         {
-            for (int i = 0; i < 1; i++)
+            for (int i = 0; i < 50; i++)
             {
-                var neighbors = Grid.GetEmptyNeighbors();
+                /*var neighbors = Grid.GetEmptyNeighbors();
 
                 if (!neighbors.Any())
                     break;
 
-                var pos = neighbors[UnityEngine.Random.Range(0, neighbors.Count - 1)];
+                var pos = neighbors[UnityEngine.Random.Range(0, neighbors.Count - 1)];*/
+
+                var pos = buildPositions.ElementAt(UnityEngine.Random.Range(0, buildPositions.Count - 1));
                 SpawnBuilding(pos.X, pos.Y, BuildingTemplates.First(), Builder.Generated);
             }
 
