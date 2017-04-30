@@ -1,6 +1,4 @@
-﻿using System.Collections;
-using System.Collections.Generic;
-using UnityEngine;
+﻿using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
@@ -8,6 +6,7 @@ public class GameBehaviorScript : MonoBehaviour {
 
     public int Money = 100;
     public Text MoneyLabel;
+    public Text PopulationLabel;
     public GameObject cursorObject;
     public GameObject city;
 
@@ -16,19 +15,17 @@ public class GameBehaviorScript : MonoBehaviour {
 
     MouseMode MouseMode;
 
-
 	// Use this for initialization
 	void Start () {
         this.MouseMode = MouseMode.Nothing;
         cityScript = city.GetComponent<CityBehaviorScript>();
     }
 
-
     // Update is called once per frame
     void Update () {
         Money++;
-        MoneyLabel.text = "Munney: " + Money.ToString();
-
+        MoneyLabel.text = "Money: " + Money.ToString();
+        PopulationLabel.text = "Population: " + cityScript.Population.ToString();
 
         if (MouseMode != MouseMode.Nothing && !EventSystem.current.IsPointerOverGameObject())
         {
@@ -42,7 +39,6 @@ public class GameBehaviorScript : MonoBehaviour {
                 cursorObject.transform.position = new Vector3(hitPos.X + 0.5f, 0.5f, hitPos.Y + 0.5f);
                 if(Input.GetMouseButton(0))
                 {
-
                     if (MouseMode == MouseMode.Walls)
                     {
                         if (cityScript.Grid.IsEmpty(hitPos) && Money >= 10)
@@ -84,9 +80,6 @@ public class GameBehaviorScript : MonoBehaviour {
             cursorObject.SetActive(true);
         }
     }
-
-
-
 }
 
 public enum MouseMode
