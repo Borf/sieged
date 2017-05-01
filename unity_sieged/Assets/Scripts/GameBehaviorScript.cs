@@ -12,7 +12,6 @@ public class GameBehaviorScript : MonoBehaviour {
     public GameObject city;
 
     private CityBehaviorScript cityScript;
-    public GameObject myCamera;
 
     MouseMode MouseMode;
 
@@ -33,7 +32,7 @@ public class GameBehaviorScript : MonoBehaviour {
         if (MouseMode != MouseMode.Nothing && !EventSystem.current.IsPointerOverGameObject())
         {
             RaycastHit hit;
-            Ray ray = this.myCamera.GetComponent<Camera>().ScreenPointToRay(Input.mousePosition);
+            Ray ray = Camera.main.GetComponent<Camera>().ScreenPointToRay(Input.mousePosition);
 
             if (Physics.Raycast(ray, out hit))
             {

@@ -62,10 +62,11 @@ public class CityBehaviorScript : MonoBehaviour {
         HashSet<Point> newNeighbours = new HashSet<Point>();
         foreach (Point p in newPoints)
             foreach (Point offset in offsets)
-                if (!newPoints.Contains(p + offset))
+                if (!newPoints.Contains(p + offset) && !Grid[p+offset].HasBuilding)
                     newNeighbours.Add(p + offset);
-        buildPositions.RemoveWhere(p => newPoints.Contains(p));
+
         buildPositions.UnionWith(newNeighbours);
+        buildPositions.RemoveWhere(p => newPoints.Contains(p));
     }
 
     private bool CanSpawn(int left, int top, GameObject template)
