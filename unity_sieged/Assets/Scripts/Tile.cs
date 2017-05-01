@@ -2,16 +2,18 @@
 
 public class Tile
 {
-    public Builder Builder;
+    public BuildingType BuildingType;
     public int NeighboringHouses;
 
-    public bool HasBuilding { get { return Builder != Builder.None; } }
+    public bool HasBuilding { get { return BuildingType != BuildingType.None; } }
     public GameObject Building;
 }
 
-public enum Builder
+public enum BuildingType
 {
     None,
-    Player,
-    Generated
+    Townhall,
+    House,
+    Wall,
+    Tower
 }

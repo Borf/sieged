@@ -27,7 +27,7 @@ public class Grid
             {
                 Tiles[x, y] = new Tile()
                 {
-                    Builder = Builder.None,
+                    BuildingType = BuildingType.None,
                     NeighboringHouses = 0,
                     Building = null
                 };
@@ -51,13 +51,12 @@ public class Grid
         set { Tiles[x, y] = value; }
     }
 
-
-    public void UpdateTile(Point pos, Builder builder, GameObject building)
+    public void UpdateTile(Point pos, BuildingType builder, GameObject building)
     {
         var tile = Tiles[pos.X, pos.Y];
         tile.Building = building;
 
-        if (tile.Builder != Builder.Generated && builder == Builder.Generated) // None -> Generated || Player -> Generated
+        if ((tile.BuildingType != BuildingType.House && tile.BuildingType != BuildingType.Townhall) && (builder == BuildingType.House || builder == BuildingType.Townhall))
         {
             MinXWithNeighbors = Math.Min(MinXWithNeighbors, pos.X-1);
             MaxXWithNeighbors = Math.Max(MaxXWithNeighbors, pos.X+1);
@@ -80,10 +79,10 @@ public class Grid
             UpdateNeighbors(pos, 1);
         }
 
-        if (tile.Builder == Builder.Generated && builder != Builder.Generated) // Generated -> None || Generated -> Player
+        if ((tile.BuildingType == BuildingType.House || tile.BuildingType == BuildingType.Townhall) && (builder != BuildingType.House && builder != BuildingType.Townhall))
             UpdateNeighbors(pos, -1);
 
-        tile.Builder = builder;
+        tile.BuildingType = builder;
     }
 
     private void UpdateNeighbors(Point pos, int delta)

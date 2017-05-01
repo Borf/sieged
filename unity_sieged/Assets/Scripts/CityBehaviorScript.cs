@@ -3,27 +3,27 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 
-public class CityBehaviorScript : MonoBehaviour {
+public class CityBehaviorScript : MonoBehaviour
+{
 
-    public float delay = 0.5f;
-
-
-    private List<Point> offsets = new List<Point> { new Point(0, 1), new Point(0, -1), new Point(1, 0), new Point(-1, 0) };
-
+    public float Delay = 0.5f;
     public GameObject TownhallTemplate;
     public List<GameObject> BuildingTemplates;
     public List<GameObject> WallTemplates;
     public List<GameObject> TowerTemplates;
+    public int Population = 0;
 
     private HashSet<Point> buildPositions = new HashSet<Point>();
+    private List<Point> offsets = new List<Point> { new Point(0, 1), new Point(0, -1), new Point(1, 0), new Point(-1, 0) };
 
     public Grid Grid { get; set; }
 
     // Use this for initialization
-    void Start () {
+    void Start()
+    {
 
         Grid = new Grid(100, 100);
-        SpawnBuilding(Grid.Width/2, Grid.Height/2, TownhallTemplate, Builder.Generated);
+        SpawnBuilding(Grid.Width / 2, Grid.Height / 2, TownhallTemplate, BuildingType.Townhall);
 
         StartCoroutine(spawnStuff());
     }
@@ -34,10 +34,13 @@ public class CityBehaviorScript : MonoBehaviour {
 
     }
 
-    public void SpawnBuilding(int left, int top, GameObject template, Builder builder)
+    public void SpawnBuilding(int left, int top, GameObject template, BuildingType builder)
     {
         if (!CanSpawn(left, top, template))
             return;
+
+        if (builder == BuildingType.House)
+            Population++;
 
         var buildingTemplate = template.GetComponent<BuildingTemplate>();
         var building = Instantiate(template, new Vector3(left + buildingTemplate.Width / 2.0f, 0, top + buildingTemplate.Height / 2.0f), Quaternion.identity, gameObject.transform);
@@ -46,7 +49,6 @@ public class CityBehaviorScript : MonoBehaviour {
         //buildings have random rotation ;)
         if (BuildingTemplates.Contains(template))
             building.transform.Rotate(new Vector3(0, UnityEngine.Random.Range(0, 360), 0));
-
 
         //borfcode: is this more efficient?
         List<Point> newPoints = new List<Point>();
@@ -91,11 +93,19 @@ public class CityBehaviorScript : MonoBehaviour {
             return;
 
         GameObject building = Grid[pos].Building;
+
         BuildingTemplate template = building.GetComponent<BuildingTemplate>();
 
-        for(int x = 0; x < template.Width; x++)
-            for(int y = 0; y < template.Height; y++)
-                Grid.UpdateTile(pos + new Point(x,y), Builder.None, null);
+        var buildingType = Grid[pos].BuildingType;
+        if (buildingType == BuildingType.House) // // Update population
+            Population--;
+
+        if (buildingType == BuildingType.Townhall) // Don't allow destruction of town hall
+            return;
+
+        for (int x = 0; x < template.Width; x++)
+            for (int y = 0; y < template.Height; y++)
+                Grid.UpdateTile(pos + new Point(x, y), BuildingType.None, null);
         GameObject.Destroy(building);
     }
 
@@ -107,18 +117,18 @@ public class CityBehaviorScript : MonoBehaviour {
         //if (Grid[pos.X, pos.Y].Building.Template != wallTemplates.First()) //TODO: if is wall
         //    return;
 
-        Grid.UpdateTile(pos, Builder.None, null);
-        SpawnBuilding(pos.X, pos.Y, TowerTemplates.First(), Builder.Player);
+        Grid.UpdateTile(pos, BuildingType.None, null);
+        SpawnBuilding(pos.X, pos.Y, TowerTemplates.First(), BuildingType.Tower);
     }
 
     internal void SpawnWall(int x, int y)
     {
-        SpawnBuilding(x, y, WallTemplates.First(), Builder.Player);
+        SpawnBuilding(x, y, WallTemplates.First(), BuildingType.Wall);
     }
 
     public IEnumerator spawnStuff()
     {
-        while(true)
+        while (true)
         {
             for (int i = 0; i < 50; i++)
             {
@@ -129,44 +139,14 @@ public class CityBehaviorScript : MonoBehaviour {
 
                 var pos = neighbors[UnityEngine.Random.Range(0, neighbors.Count - 1)];*/
 
+                if (!buildPositions.Any())
+                    break;
+
                 var pos = buildPositions.ElementAt(UnityEngine.Random.Range(0, buildPositions.Count - 1));
-                SpawnBuilding(pos.X, pos.Y, BuildingTemplates.First(), Builder.Generated);
+                SpawnBuilding(pos.X, pos.Y, BuildingTemplates.First(), BuildingType.House);
             }
 
-            yield return new WaitForSeconds(delay);
+            yield return new WaitForSeconds(Delay);
         }
-    }
-
-    public List<Point> GetEmptyNeighbors()
-    {
-        var result = new List<Point>();
-
-        for(int x = 0; x < Grid.Width; x++)
-        {
-            for (int y = 0; y < Grid.Height; y++)
-            {
-                var pos = new Point(x, y);
-                if (!Grid[x, y].HasBuilding)
-                {
-                    bool hasNeighbor = false;
-                    foreach (var offset in offsets)
-                    {
-                        var newPos = pos + offset;
-
-                        if (Grid.IsOutOfBounds(newPos))
-                            continue;
-
-                        if (Grid[newPos.X, newPos.Y].HasBuilding)
-                        {
-                            hasNeighbor = true;
-                            break;
-                        }
-                    }
-                    if (hasNeighbor)
-                        result.Add(pos);
-                }
-            }
-        }
-        return result;
     }
 }
