@@ -114,8 +114,8 @@ public class CityBehaviorScript : MonoBehaviour
         if (Grid.IsOutOfBounds(pos))
             return;
 
-        //if (Grid[pos.X, pos.Y].Building.Template != wallTemplates.First()) //TODO: if is wall
-        //    return;
+        if (Grid[pos.X, pos.Y].BuildingType != BuildingType.Wall)
+            return;
 
         Grid.UpdateTile(pos, BuildingType.None, null);
         SpawnBuilding(pos.X, pos.Y, TowerTemplates.First(), BuildingType.Tower);
@@ -130,15 +130,8 @@ public class CityBehaviorScript : MonoBehaviour
     {
         while (true)
         {
-            for (int i = 0; i < 50; i++)
+            for (int i = 0; i < 10; i++)
             {
-                /*var neighbors = Grid.GetEmptyNeighbors();
-
-                if (!neighbors.Any())
-                    break;
-
-                var pos = neighbors[UnityEngine.Random.Range(0, neighbors.Count - 1)];*/
-
                 if (!buildPositions.Any())
                     break;
 
