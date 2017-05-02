@@ -64,7 +64,7 @@ public class CityBehaviorScript : MonoBehaviour
         HashSet<Point> newNeighbours = new HashSet<Point>();
         foreach (Point p in newPoints)
             foreach (Point offset in offsets)
-                if (!newPoints.Contains(p + offset))
+                if (!Grid[p+offset].HasBuilding)
                     newNeighbours.Add(p + offset);
         buildPositions.RemoveWhere(p => newPoints.Contains(p));
         buildPositions.UnionWith(newNeighbours);
