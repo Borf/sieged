@@ -1,11 +1,11 @@
-﻿using System.Collections;
+﻿using Assets.Scripts.Lib;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 
 public class CityBehaviorScript : MonoBehaviour
 {
-
     public float Delay = 0.5f;
     public GameObject TownhallTemplate;
     public List<GameObject> BuildingTemplates;
@@ -13,8 +13,11 @@ public class CityBehaviorScript : MonoBehaviour
     public List<GameObject> TowerTemplates;
     public int Population = 0;
 
-    private HashSet<Point> buildPositions = new HashSet<Point>();
+    private HashSet<Point> buildPositionsHouses = new HashSet<Point>();
+    private HashSet<Point> buildPositionsWalls = new HashSet<Point>();
+
     private List<Point> offsets = new List<Point> { new Point(0, 1), new Point(0, -1), new Point(1, 0), new Point(-1, 0) };
+    private List<Point> diagonalOffsets = new List<Point> { new Point(1, 1), new Point(-1, 1), new Point(1, -1), new Point(-1, -1) };
 
     public Grid Grid { get; set; }
 
@@ -34,41 +37,73 @@ public class CityBehaviorScript : MonoBehaviour
 
     }
 
-    public void SpawnBuilding(int left, int top, GameObject template, BuildingType builder)
+    public List<Point> GetAllPointsWithOffset(Point pos)
+    {
+        return offsets.Select(o => o + pos).ToList();
+    }
+
+    public bool SpawnBuilding(int left, int top, GameObject template, BuildingType builder)
     {
         if (!CanSpawn(left, top, template))
-            return;
+            return false;
 
-        if (builder == BuildingType.House)
-            Population++;
-
+        // Create building object
         var buildingTemplate = template.GetComponent<BuildingTemplate>();
         var building = Instantiate(template, new Vector3(left + buildingTemplate.Width / 2.0f, 0, top + buildingTemplate.Height / 2.0f), Quaternion.identity, gameObject.transform);
         building.isStatic = true;
 
-        //buildings have random rotation ;)
+        // Handling of different building types
+        if (builder == BuildingType.House)
+            Population++;
+
+        // Random rotation
         if (BuildingTemplates.Contains(template))
             building.transform.Rotate(new Vector3(0, UnityEngine.Random.Range(0, 360), 0));
 
-        //borfcode: is this more efficient?
+        // Place building
         List<Point> newPoints = new List<Point>();
         foreach (var x in Enumerable.Range(left, buildingTemplate.Width))
         {
             foreach (var y in Enumerable.Range(top, buildingTemplate.Height))
             {
-                Grid.UpdateTile(new Point(x, y), builder, building);
-                newPoints.Add(new Point(x, y));
+                var newPoint = new Point(x, y);
+                Grid.UpdateTile(newPoint, builder, building);
+                newPoints.Add(newPoint);
             }
         }
 
+
+        // Determine new buildable positions
         HashSet<Point> newNeighbours = new HashSet<Point>();
         foreach (Point p in newPoints)
             foreach (Point offset in offsets)
-                if (!newPoints.Contains(p + offset) && !Grid[p+offset].HasBuilding)
+                if (!newPoints.Contains(p + offset) && !Grid[p + offset].HasBuilding)
                     newNeighbours.Add(p + offset);
 
-        buildPositions.UnionWith(newNeighbours);
-        buildPositions.RemoveWhere(p => newPoints.Contains(p));
+        buildPositionsWalls.RemoveWhere(newPoints.Contains);  // Remove current built building
+        buildPositionsHouses.RemoveWhere(newPoints.Contains);  // Remove current built building
+
+        if (builder == BuildingType.House || builder == BuildingType.Townhall)
+        {
+            buildPositionsHouses.UnionWith(newNeighbours);
+            buildPositionsWalls.RemoveWhere(newNeighbours.Contains);
+        }
+        else if (builder == BuildingType.Wall || builder == BuildingType.Tower)
+        {
+            foreach (var newNeighbor in newNeighbours)
+            {
+                if (buildPositionsHouses.Contains(newNeighbor))
+                {
+                    // skip
+                }
+                else
+                {
+                    buildPositionsWalls.Add(newNeighbor);
+                }
+            }
+        }
+
+        return true;
     }
 
     private bool CanSpawn(int left, int top, GameObject template)
@@ -130,7 +165,10 @@ public class CityBehaviorScript : MonoBehaviour
     {
         while (true)
         {
-            for (int i = 0; i < 50; i++)
+            Debug.Log("house positions: " + buildPositionsHouses.Count);
+            Debug.Log("walls positions: " + buildPositionsWalls.Count);
+
+            for (int i = 0; i < 20; i++)
             {
                 /*var neighbors = Grid.GetEmptyNeighbors();
 
@@ -139,14 +177,43 @@ public class CityBehaviorScript : MonoBehaviour
 
                 var pos = neighbors[UnityEngine.Random.Range(0, neighbors.Count - 1)];*/
 
-                if (!buildPositions.Any())
+                Point pos = null;
+
+
+
+                if (buildPositionsHouses.Any())
+                {
+                    pos = buildPositionsHouses.GetRandomElement();
+                }
+                else if (buildPositionsWalls.Any())
+                {
+                    pos = buildPositionsWalls.GetRandomElement();
+                }
+
+                if (pos == null)
                     break;
 
-                var pos = buildPositions.ElementAt(UnityEngine.Random.Range(0, buildPositions.Count - 1));
                 SpawnBuilding(pos.X, pos.Y, BuildingTemplates.First(), BuildingType.House);
+
             }
 
             yield return new WaitForSeconds(Delay);
         }
+    }
+
+    private bool TrySpawnNeighbor(Point pos)
+    {
+        foreach (var newPos in offsets.Select(o => o + pos))
+        {
+            if (SpawnBuilding(newPos.X, newPos.Y, BuildingTemplates.First(), BuildingType.House))
+                return true;
+        }
+
+        foreach (var newPos in diagonalOffsets.Select(o => o + pos))
+        {
+            if (SpawnBuilding(newPos.X, newPos.Y, BuildingTemplates.First(), BuildingType.House))
+                return true;
+        }
+        return false;
     }
 }

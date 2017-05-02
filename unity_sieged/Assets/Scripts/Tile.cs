@@ -6,6 +6,8 @@ public class Tile
     public int NeighboringHouses;
 
     public bool HasBuilding { get { return BuildingType != BuildingType.None; } }
+
+    public bool HasGeneratedBuilding { get { return BuildingType == BuildingType.House || BuildingType == BuildingType.Townhall; } }
     public GameObject Building;
 }
 
