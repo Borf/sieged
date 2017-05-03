@@ -91,6 +91,7 @@
     <Compile Include="Assets\Scripts\GameBehaviorScript.cs" />
     <Compile Include="Assets\Scripts\Grid.cs" />
     <Compile Include="Assets\Scripts\HealthBar.cs" />
+    <Compile Include="Assets\Scripts\Lib\Math.cs" />
     <Compile Include="Assets\Scripts\Lib\Point.cs" />
     <Compile Include="Assets\Scripts\Tile.cs" />
     <Compile Include="Assets\Scripts\Tower.cs" />
