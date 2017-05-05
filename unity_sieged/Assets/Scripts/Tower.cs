@@ -28,7 +28,7 @@ public class Tower : MonoBehaviour {
             {
                 if((enemy.transform.position - transform.position).magnitude < range)
                 {
-                    GameObject newProjectile = GameObject.Instantiate(projectile, transform.position, Quaternion.identity) as GameObject;
+                    GameObject newProjectile = GameObject.Instantiate(projectile, transform.position + new Vector3(0,3,0), Quaternion.identity) as GameObject;
 
                     newProjectile.GetComponent<BasicProjectile>().Target = enemy;
 

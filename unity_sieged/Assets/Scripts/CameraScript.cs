@@ -19,8 +19,11 @@ public class CameraScript : MonoBehaviour {
         if (Input.GetKey("mouse 2"))
         {
             Vector3 diff = prevPosition - Input.mousePosition;
-            transform.Translate(Vector3.right * (float)Time.deltaTime * PanSpeed * diff.x, Space.World);
-            transform.Translate(Vector3.forward * (float)Time.deltaTime * PanSpeed * diff.y, Space.World);
+            if (diff.magnitude < 100)
+            {
+                transform.Translate(Vector3.right * (float)Time.deltaTime * PanSpeed * diff.x, Space.World);
+                transform.Translate(Vector3.forward * (float)Time.deltaTime * PanSpeed * diff.y, Space.World);
+            }
         }
 
         transform.Translate(Vector3.forward * (float)Time.deltaTime * PanSpeed * 100 * Input.GetAxis("Mouse ScrollWheel"), Space.Self);

@@ -40,10 +40,10 @@ public class GameBehaviorScript : MonoBehaviour {
                 {
                     if (MouseMode == MouseMode.Walls)
                     {
-                        if (cityScript.Grid.IsEmpty(hitPos) && Money >= 10)
+                        if (Money >= 10)
                         {
                             Money -= 10;
-                            cityScript.SpawnWall(hitPos.X, hitPos.Y);
+                            cityScript.SpawnWall(hitPos);
                         }
                     }
                     else if (MouseMode == MouseMode.Destroy)

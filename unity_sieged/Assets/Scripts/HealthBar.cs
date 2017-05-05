@@ -16,9 +16,10 @@ public class HealthBar : MonoBehaviour {
 	void Update () {
         Vector3 target = Camera.main.transform.position;
         target.x = this.transform.position.x;
-        this.transform.LookAt(target);
-        
-        this.transform.FindChild("Canvas").FindChild("Green").GetComponent<RectTransform>().SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, Health);
 
+        this.transform.FindChild("Canvas").gameObject.SetActive(Health < 0);
+
+        this.transform.LookAt(target);
+        this.transform.FindChild("Canvas").FindChild("Green").GetComponent<RectTransform>().SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, Health);
     }
 }

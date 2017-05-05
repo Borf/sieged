@@ -26,7 +26,7 @@ public class CityBehaviorScript : MonoBehaviour
     {
 
         Grid = new Grid(100, 100);
-        SpawnBuilding(Grid.Width / 2, Grid.Height / 2, TownhallTemplate, BuildingType.Townhall);
+        SpawnBuilding(new Point(Grid.Width / 2, Grid.Height / 2), TownhallTemplate, BuildingType.Townhall);
 
         StartCoroutine(spawnStuff());
     }
@@ -42,14 +42,14 @@ public class CityBehaviorScript : MonoBehaviour
         return offsets.Select(o => o + pos).ToList();
     }
 
-    public bool SpawnBuilding(int left, int top, GameObject template, BuildingType builder)
+    public bool SpawnBuilding(Point pos, GameObject template, BuildingType builder)
     {
-        if (!CanSpawn(left, top, template))
+        if (!CanSpawn(pos, template))
             return false;
 
         // Create building object
         var buildingTemplate = template.GetComponent<BuildingTemplate>();
-        var building = Instantiate(template, new Vector3(left + buildingTemplate.Width / 2.0f, 0, top + buildingTemplate.Height / 2.0f), Quaternion.identity, gameObject.transform);
+        var building = Instantiate(template, new Vector3(pos.X + buildingTemplate.Width / 2.0f, 0, pos.Y + buildingTemplate.Height / 2.0f), Quaternion.identity, gameObject.transform);
         building.isStatic = true;
 
         // Handling of different building types
@@ -62,9 +62,9 @@ public class CityBehaviorScript : MonoBehaviour
 
         // Place building
         List<Point> newPoints = new List<Point>();
-        foreach (var x in Enumerable.Range(left, buildingTemplate.Width))
+        foreach (var x in Enumerable.Range(pos.X, buildingTemplate.Width))
         {
-            foreach (var y in Enumerable.Range(top, buildingTemplate.Height))
+            foreach (var y in Enumerable.Range(pos.Y, buildingTemplate.Height))
             {
                 var newPoint = new Point(x, y);
                 Grid.UpdateTile(newPoint, builder, building);
@@ -106,12 +106,12 @@ public class CityBehaviorScript : MonoBehaviour
         return true;
     }
 
-    private bool CanSpawn(int left, int top, GameObject template)
+    private bool CanSpawn(Point pos, GameObject template)
     {
         var buildingTemplate = template.GetComponent<BuildingTemplate>();
-        foreach (var x in Enumerable.Range(left, buildingTemplate.Width))
+        foreach (var x in Enumerable.Range(pos.X, buildingTemplate.Width))
         {
-            foreach (var y in Enumerable.Range(top, buildingTemplate.Height))
+            foreach (var y in Enumerable.Range(pos.Y, buildingTemplate.Height))
             {
                 if (Grid[x, y].HasBuilding)
                     return false;
@@ -153,12 +153,14 @@ public class CityBehaviorScript : MonoBehaviour
         //    return;
 
         Grid.UpdateTile(pos, BuildingType.None, null);
-        SpawnBuilding(pos.X, pos.Y, TowerTemplates.First(), BuildingType.Tower);
+        SpawnBuilding(pos, TowerTemplates.First(), BuildingType.Tower);
     }
 
-    internal void SpawnWall(int x, int y)
+    internal void SpawnWall(Point pos)
     {
-        SpawnBuilding(x, y, WallTemplates.First(), BuildingType.Wall);
+        if (!Grid.IsEmpty(pos))
+            DestroyBuilding(pos);
+        SpawnBuilding(pos, WallTemplates.First(), BuildingType.Wall);
     }
 
     public IEnumerator spawnStuff()
@@ -193,7 +195,7 @@ public class CityBehaviorScript : MonoBehaviour
                 if (pos == null)
                     break;
 
-                SpawnBuilding(pos.X, pos.Y, BuildingTemplates.First(), BuildingType.House);
+                SpawnBuilding(pos, BuildingTemplates.First(), BuildingType.House);
 
             }
 
@@ -205,13 +207,13 @@ public class CityBehaviorScript : MonoBehaviour
     {
         foreach (var newPos in offsets.Select(o => o + pos))
         {
-            if (SpawnBuilding(newPos.X, newPos.Y, BuildingTemplates.First(), BuildingType.House))
+            if (SpawnBuilding(newPos, BuildingTemplates.First(), BuildingType.House))
                 return true;
         }
 
         foreach (var newPos in diagonalOffsets.Select(o => o + pos))
         {
-            if (SpawnBuilding(newPos.X, newPos.Y, BuildingTemplates.First(), BuildingType.House))
+            if (SpawnBuilding(newPos, BuildingTemplates.First(), BuildingType.House))
                 return true;
         }
         return false;
