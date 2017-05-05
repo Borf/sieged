@@ -46,17 +46,21 @@ public class GameBehaviorScript : MonoBehaviour {
                             cityScript.SpawnWall(hitPos.X, hitPos.Y);
                         }
                     }
-                    else if (MouseMode == MouseMode.Tower)
+                    else if (MouseMode == MouseMode.Destroy)
+                    {
+                        cityScript.DestroyBuilding(hitPos);
+                    }
+                }
+
+                if (Input.GetMouseButtonDown(0))
+                {
+                    if (MouseMode == MouseMode.Tower)
                     {
                         if (Money >= 25)
                         {
                             cityScript.changeToTower(hitPos);
                             Money -= 25;
                         }
-                    }
-                    else if (MouseMode == MouseMode.Destroy)
-                    {
-                        cityScript.DestroyBuilding(hitPos);
                     }
                 }
             }
