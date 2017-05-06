@@ -2,7 +2,9 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-public class Tower : MonoBehaviour {
+public class Tower : MonoBehaviour
+{
+    private float RetryFindTargetDelay = 0.01f;
 
     public float ShootDelay = 1;
     public float range = 15;
@@ -17,7 +19,6 @@ public class Tower : MonoBehaviour {
 	void Update () {
 		
 	}
-
 
     IEnumerator shoot()
     {
@@ -35,8 +36,7 @@ public class Tower : MonoBehaviour {
                     yield return new WaitForSeconds(ShootDelay);
                 }
             }
-            yield return new WaitForSeconds(0.01f);
+            yield return new WaitForSeconds(RetryFindTargetDelay);
         }
     }
-
 }

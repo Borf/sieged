@@ -18,21 +18,17 @@ public class GameBehaviorScript : MonoBehaviour {
     public GameObject ConstructionSlider;
     public GameObject ReligionSlider;
 
-    /* public Text GrowthSliderText;
-     public Text ConstructionSliderText;
-     public Text ReligionSliderText;*/
-
     private CityBehaviorScript cityScript;
 
-    private float GrowthValue { get { return Parameters[CityParameterType.Growth].TargetValue; } }
-    private float ConstructionValue { get { return Parameters[CityParameterType.Construction].TargetValue; } }
-    private float ReligionValue { get { return Parameters[CityParameterType.Religion].TargetValue; } }
+    private float GrowthValue { get { return _parameters[HouseDesignation.Growth].TargetValue; } }
+    private float ConstructionValue { get { return _parameters[HouseDesignation.Construction].TargetValue; } }
+    private float ReligionValue { get { return _parameters[HouseDesignation.Religion].TargetValue; } }
 
-    private float ActualGrowthValue { get { return Parameters[CityParameterType.Growth].ActualValue; } }
-    private float ActualConstructionValue { get { return Parameters[CityParameterType.Construction].ActualValue; } }
-    private float ActualReligionValue { get { return Parameters[CityParameterType.Religion].ActualValue; } }
+    private float ActualGrowthValue { get { return _parameters[HouseDesignation.Growth].ActualValue; } }
+    private float ActualConstructionValue { get { return _parameters[HouseDesignation.Construction].ActualValue; } }
+    private float ActualReligionValue { get { return _parameters[HouseDesignation.Religion].ActualValue; } }
 
-    private Dictionary<CityParameterType, CityParameter> Parameters;
+    private Dictionary<HouseDesignation, CityParameter> _parameters;
 
     private MouseMode MouseMode;
 
@@ -42,14 +38,14 @@ public class GameBehaviorScript : MonoBehaviour {
         cityScript = city.GetComponent<CityBehaviorScript>();
 
         // Init city parameters
-        Parameters = new Dictionary<CityParameterType, CityParameter>();
-        Parameters[CityParameterType.Construction] = new CityParameter() { slider = ConstructionSlider };
-        Parameters[CityParameterType.Growth] = new CityParameter() { slider = GrowthSlider };
-        Parameters[CityParameterType.Religion] = new CityParameter() { slider = ReligionSlider };
+        _parameters = new Dictionary<HouseDesignation, CityParameter>();
+        _parameters[HouseDesignation.Construction] = new CityParameter() { slider = ConstructionSlider };
+        _parameters[HouseDesignation.Growth] = new CityParameter() { slider = GrowthSlider };
+        _parameters[HouseDesignation.Religion] = new CityParameter() { slider = ReligionSlider };
+        cityScript.Parameters = _parameters;
 
         StartCoroutine(UpdateActualValues());
     }
-
 
     // Update is called once per frame
     void Update () {
@@ -98,19 +94,18 @@ public class GameBehaviorScript : MonoBehaviour {
         }
     }
 
-
     private IEnumerator UpdateActualValues()
     {
-        foreach (var parameter in Parameters.Values)
+        foreach (var parameter in _parameters.Values)
             parameter.slider.GetComponent<SliderBehavior>().ActualValue = parameter.ActualValue;
         while (true)
         {
-            foreach(var parameter in Parameters.Values)
+            foreach(var parameter in _parameters.Values)
             {
                 if (parameter.ActualValue != parameter.TargetValue)
                 {
-                    parameter.ActualValue += 0.001f * Mathf.Sign(parameter.TargetValue - parameter.ActualValue);
-                    parameter.ActualValue += (parameter.TargetValue - parameter.ActualValue) / 100.0f;
+                    parameter.ActualValue += 0.0005f * Mathf.Sign(parameter.TargetValue - parameter.ActualValue);
+                    parameter.ActualValue += (parameter.TargetValue - parameter.ActualValue) / 2000.0f;
                     parameter.slider.GetComponent<SliderBehavior>().ActualValue = parameter.ActualValue;
                 }
             }
@@ -125,46 +120,46 @@ public class GameBehaviorScript : MonoBehaviour {
 
     public void SliderChanged(float newValue, string changedParameter)
     {
-        SliderChanged(newValue, Helper.ParseEnum<CityParameterType>(changedParameter));
+        SliderChanged(newValue, Helper.ParseEnum<HouseDesignation>(changedParameter));
     }
 
-    public void SliderChanged(float newValue, CityParameterType changedParameter)
+    public void SliderChanged(float newValue, HouseDesignation changedParameter)
     {
-        Parameters[changedParameter].TargetValue = newValue;
-        var delta = Parameters.Sum(p => p.Value.TargetValue) - 1;
+        _parameters[changedParameter].TargetValue = newValue;
+        var delta = _parameters.Sum(p => p.Value.TargetValue) - 1;
         var division = delta + 1 - newValue;
+        
         //first calculate all new parameters
-        foreach (var parameter in Parameters)
+        foreach (var parameter in _parameters)
         {
             if(parameter.Key != changedParameter)
             {
                 if (division > 0)
                     parameter.Value.TargetValue -= delta * parameter.Value.TargetValue / division;
                 else
-                    parameter.Value.TargetValue -= delta / (Parameters.Count - 1);
+                    parameter.Value.TargetValue -= delta / (_parameters.Count - 1);
             }
         }
         //then send them to the UI
-        foreach(var parameter in Parameters)
+        foreach(var parameter in _parameters)
         {
             parameter.Value.slider.GetComponent<SliderBehavior>().Value = parameter.Value.TargetValue;
         }
     }
 
-
     public void GrowthSliderValueChanged(float newValue)
     {
-        SliderChanged(newValue, CityParameterType.Growth);
+        SliderChanged(newValue, HouseDesignation.Growth);
     }
 
     public void ConstructionSliderValueChanged(float newValue)
     {
-        SliderChanged(newValue, CityParameterType.Construction);
+        SliderChanged(newValue, HouseDesignation.Construction);
     }
 
     public void ReligionSliderValueChanged(float newValue)
     {
-        SliderChanged(newValue, CityParameterType.Religion);
+        SliderChanged(newValue, HouseDesignation.Religion);
     }
 
     public void SetEditMode(string mode)
@@ -186,11 +181,3 @@ public class GameBehaviorScript : MonoBehaviour {
         }
     }
 }
-
-public enum MouseMode
-{
-    Nothing,
-    Destroy,
-    Walls,
-    Tower,
-};

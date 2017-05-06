@@ -7,6 +7,7 @@ using UnityEngine;
 
 public class CityBehaviorScript : MonoBehaviour
 {
+    // Set via Unity
     public float Delay = 0.5f;
     public GameObject TownhallTemplate;
     public List<GameObject> BuildingTemplates;
@@ -14,22 +15,34 @@ public class CityBehaviorScript : MonoBehaviour
     public List<GameObject> TowerTemplates;
     public int Population = 0;
 
+    // Private consts
+    private List<Point> offsets = new List<Point> { new Point(0, 1), new Point(0, -1), new Point(1, 0), new Point(-1, 0) };
+    private List<Point> diagonalOffsets = new List<Point> { new Point(1, 1), new Point(-1, 1), new Point(1, -1), new Point(-1, -1) };
+    private float HouseDesignationRatio = 0.8f;
+
+    // Private state variables
     private HashSet<Point> buildPositionsHouses = new HashSet<Point>();
     private HashSet<Point> buildPositionsWalls = new HashSet<Point>();
     private Dictionary<BuildingType, List<GameObject>> Buildings;
+    private Dictionary<HouseDesignation, List<GameObject>> Houses;
 
-    private List<Point> offsets = new List<Point> { new Point(0, 1), new Point(0, -1), new Point(1, 0), new Point(-1, 0) };
-    private List<Point> diagonalOffsets = new List<Point> { new Point(1, 1), new Point(-1, 1), new Point(1, -1), new Point(-1, -1) };
-
+    // Public state variables
     public Grid Grid { get; set; }
+    public Dictionary<HouseDesignation, CityParameter> Parameters { get; set; }
 
     // Use this for initialization
     void Start()
     {
         Buildings = new Dictionary<BuildingType, List<GameObject>>();
-        foreach (var buildingType in Enum.GetValues(typeof(BuildingType)).Cast<BuildingType>())
+        foreach (var buildingType in Helper.GetEnumValues<BuildingType>())
         {
             Buildings[buildingType] = new List<GameObject>();
+        }
+
+        Houses = new Dictionary<HouseDesignation, List<GameObject>>();
+        foreach (var houseDesignation in Helper.GetEnumValues<HouseDesignation>())
+        {
+            Houses[houseDesignation] = new List<GameObject>();
         }
 
         Grid = new Grid(100, 100);
@@ -63,7 +76,32 @@ public class CityBehaviorScript : MonoBehaviour
 
         // Handling of different building types
         if (buildingType == BuildingType.House)
+        {
+            // determine designation (UI purposes only)
+            /*HouseDesignation houseDesignation = HouseDesignation.None; 
+            if (Houses[HouseDesignation.None].Count == 0
+                || Houses[HouseDesignation.None].Count / Houses.Sum(h => h.Value.Count) < HouseDesignationRatio)
+            {
+                houseDesignation = HouseDesignation.None;
+            }
+            else
+            {
+                var empty = Houses.Where(h => !h.Value.Any());
+                if (empty.Any())
+                {
+                    houseDesignation = empty.First().Key;
+                }
+                else
+                {
+                    //var ratios = 
+
+
+                }
+            }
+
+            Houses[houseDesignation].Add(building);*/
             Population++;
+        }
 
         // Random rotation
         if (BuildingTemplates.Contains(template))
@@ -80,7 +118,6 @@ public class CityBehaviorScript : MonoBehaviour
                 newPoints.Add(newPoint);
             }
         }
-
 
         // Determine new buildable positions
         HashSet<Point> newNeighbours = new HashSet<Point>();

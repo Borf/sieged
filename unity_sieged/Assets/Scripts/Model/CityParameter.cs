@@ -7,9 +7,3 @@ public class CityParameter
     public GameObject slider;
 }
 
-public enum CityParameterType
-{
-    Growth,
-    Construction,
-    Religion
-}

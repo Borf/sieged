@@ -3,18 +3,21 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 
-public class SliderBehavior : MonoBehaviour {
+public class SliderBehavior : MonoBehaviour
+{
 
     Slider slider;
     Text textValue;
     RectTransform actualValueTransform;
+    RectTransform targetValueTransform;
 
-	// Use this for initialization
-	void Start () {
+    // Use this for initialization
+    void Start () {
         slider = transform.FindChild("Slider").GetComponent<Slider>();
         textValue = transform.FindChild("Value").GetComponent<Text>();
         actualValueTransform = transform.Find("Slider/Handle Slide Area/ActualHandle").GetComponent<RectTransform>();
-	}
+        targetValueTransform = slider.gameObject.GetComponent<RectTransform>();
+    }
 	
 	// Update is called once per frame
 	void Update () {
@@ -32,11 +35,10 @@ public class SliderBehavior : MonoBehaviour {
     {
         set
         {
-            float sliderHeight = slider.gameObject.GetComponent<RectTransform>().rect.height - actualValueTransform.rect.height;
-
-
+            float sliderHeight = targetValueTransform.rect.height - actualValueTransform.rect.height;
             actualValueTransform.localPosition = new Vector3(0, (value - 0.5f) * sliderHeight, 0);
         }
     }
+
 
 }

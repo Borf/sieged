@@ -10,19 +10,3 @@ public class Tile
     public bool HasGeneratedBuilding { get { return BuildingType == BuildingType.House || BuildingType == BuildingType.Townhall; } }
     public GameObject Building;
 }
-
-public enum BuildingType
-{
-    None,
-    Townhall,
-    House,
-    Wall,
-    Tower
-}
-
-public enum HouseDesignation
-{
-    Growth,
-    Construction,
-    Sacrificion
-}
