@@ -19,3 +19,10 @@ public enum BuildingType
     Wall,
     Tower
 }
+
+public enum HouseDesignation
+{
+    Growth,
+    Construction,
+    Sacrificion
+}

@@ -1,4 +1,5 @@
 ﻿using Assets.Scripts.Lib;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
@@ -15,6 +16,7 @@ public class CityBehaviorScript : MonoBehaviour
 
     private HashSet<Point> buildPositionsHouses = new HashSet<Point>();
     private HashSet<Point> buildPositionsWalls = new HashSet<Point>();
+    private Dictionary<BuildingType, List<GameObject>> Buildings;
 
     private List<Point> offsets = new List<Point> { new Point(0, 1), new Point(0, -1), new Point(1, 0), new Point(-1, 0) };
     private List<Point> diagonalOffsets = new List<Point> { new Point(1, 1), new Point(-1, 1), new Point(1, -1), new Point(-1, -1) };
@@ -24,6 +26,10 @@ public class CityBehaviorScript : MonoBehaviour
     // Use this for initialization
     void Start()
     {
+        foreach(var buildingType in Enum.GetValues(typeof(BuildingType)).Cast<BuildingType>())
+        {
+            Buildings[buildingType] = new List<GameObject>();
+        }
 
         Grid = new Grid(100, 100);
         SpawnBuilding(new Point(Grid.Width / 2, Grid.Height / 2), TownhallTemplate, BuildingType.Townhall);
@@ -42,7 +48,7 @@ public class CityBehaviorScript : MonoBehaviour
         return offsets.Select(o => o + pos).ToList();
     }
 
-    public bool SpawnBuilding(Point pos, GameObject template, BuildingType builder)
+    public bool SpawnBuilding(Point pos, GameObject template, BuildingType buildingType)
     {
         if (!CanSpawn(pos, template))
             return false;
@@ -52,8 +58,10 @@ public class CityBehaviorScript : MonoBehaviour
         var building = Instantiate(template, new Vector3(pos.X + buildingTemplate.Width / 2.0f, 0, pos.Y + buildingTemplate.Height / 2.0f), Quaternion.identity, gameObject.transform);
         building.isStatic = true;
 
+        Buildings[buildingType].Add(building);
+
         // Handling of different building types
-        if (builder == BuildingType.House)
+        if (buildingType == BuildingType.House)
             Population++;
 
         // Random rotation
@@ -67,7 +75,7 @@ public class CityBehaviorScript : MonoBehaviour
             foreach (var y in Enumerable.Range(pos.Y, buildingTemplate.Height))
             {
                 var newPoint = new Point(x, y);
-                Grid.UpdateTile(newPoint, builder, building);
+                Grid.UpdateTile(newPoint, buildingType, building);
                 newPoints.Add(newPoint);
             }
         }
@@ -83,12 +91,12 @@ public class CityBehaviorScript : MonoBehaviour
         buildPositionsWalls.RemoveWhere(newPoints.Contains);  // Remove current built building
         buildPositionsHouses.RemoveWhere(newPoints.Contains);  // Remove current built building
 
-        if (builder == BuildingType.House || builder == BuildingType.Townhall)
+        if (buildingType == BuildingType.House || buildingType == BuildingType.Townhall)
         {
             buildPositionsHouses.UnionWith(newNeighbours);
             buildPositionsWalls.RemoveWhere(newNeighbours.Contains);
         }
-        else if (builder == BuildingType.Wall || builder == BuildingType.Tower)
+        else if (buildingType == BuildingType.Wall || buildingType == BuildingType.Tower)
         {
             foreach (var newNeighbor in newNeighbours)
             {
@@ -141,6 +149,8 @@ public class CityBehaviorScript : MonoBehaviour
         for (int x = 0; x < template.Width; x++)
             for (int y = 0; y < template.Height; y++)
                 Grid.UpdateTile(pos + new Point(x, y), BuildingType.None, null);
+
+        Buildings[buildingType].Remove(building);
         GameObject.Destroy(building);
     }
 
