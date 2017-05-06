@@ -26,7 +26,8 @@ public class CityBehaviorScript : MonoBehaviour
     // Use this for initialization
     void Start()
     {
-        foreach(var buildingType in Enum.GetValues(typeof(BuildingType)).Cast<BuildingType>())
+        Buildings = new Dictionary<BuildingType, List<GameObject>>();
+        foreach (var buildingType in Enum.GetValues(typeof(BuildingType)).Cast<BuildingType>())
         {
             Buildings[buildingType] = new List<GameObject>();
         }
@@ -177,9 +178,6 @@ public class CityBehaviorScript : MonoBehaviour
     {
         while (true)
         {
-            Debug.Log("house positions: " + buildPositionsHouses.Count);
-            Debug.Log("walls positions: " + buildPositionsWalls.Count);
-
             for (int i = 0; i < 20; i++)
             {
                 /*var neighbors = Grid.GetEmptyNeighbors();
@@ -190,8 +188,6 @@ public class CityBehaviorScript : MonoBehaviour
                 var pos = neighbors[UnityEngine.Random.Range(0, neighbors.Count - 1)];*/
 
                 Point pos = null;
-
-
 
                 if (buildPositionsHouses.Any())
                 {

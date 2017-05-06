@@ -1,4 +1,5 @@
-﻿using UnityEngine;
+﻿using System;
+using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
@@ -10,7 +11,19 @@ public class GameBehaviorScript : MonoBehaviour {
     public GameObject cursorObject;
     public GameObject city;
 
+    public Text GrowthSliderText;
+    public Text ConstructionSliderText;
+    public Text ReligionSliderText;
+
     private CityBehaviorScript cityScript;
+
+    private float GrowthValue;
+    private float ConstructionValue;
+    private float ReligionValue;
+
+    public GameObject GrowthSlider;
+    public GameObject ConstructionSlider;
+    public GameObject ReligionSlider;
 
     MouseMode MouseMode;
 
@@ -64,8 +77,51 @@ public class GameBehaviorScript : MonoBehaviour {
                     }
                 }
             }
-
         }
+    }
+
+    public void GrowthSliderValueChanged(float newValue)
+    {
+        GrowthValue = newValue;
+        var delta = GrowthValue + ConstructionValue + ReligionValue - 1;
+        ConstructionValue -= delta * ConstructionValue / (ConstructionValue + ReligionValue);
+        ReligionValue -= delta * ReligionValue / (ConstructionValue + ReligionValue);
+        Debug.Log(GrowthValue + " - " + ConstructionValue + " - " + ReligionValue);
+        UpdateSliderTexts();
+
+        ConstructionSlider.GetComponent<Slider>().value = ConstructionValue;
+        ReligionSlider.GetComponent<Slider>().value = ReligionValue;
+    }
+
+    public void ConstructionSliderValueChanged(float newValue)
+    {
+        ConstructionValue = newValue;
+        var delta = GrowthValue + ConstructionValue + ReligionValue - 1;
+        GrowthValue -= delta / 2;
+        ReligionValue -= delta / 2;
+        UpdateSliderTexts();
+
+        GrowthSlider.GetComponent<Slider>().value = GrowthValue;
+        ReligionSlider.GetComponent<Slider>().value = ReligionValue;
+    }
+
+    public void ReligionSliderValueChanged(float newValue)
+    {
+        ReligionValue = newValue;
+        var delta = GrowthValue + ConstructionValue + ReligionValue - 1;
+        GrowthValue -= delta / 2;
+        ConstructionValue -= delta / 2;
+        UpdateSliderTexts();
+
+        GrowthSlider.GetComponent<Slider>().value = GrowthValue;
+        ConstructionSlider.GetComponent<Slider>().value = ConstructionValue;
+    }
+
+    public void UpdateSliderTexts()
+    {
+        GrowthSliderText.text = Math.Round(GrowthValue * 100).ToString() + "%";
+        ConstructionSliderText.text = Math.Round(ConstructionValue * 100).ToString() + "%";
+        ReligionSliderText.text = Math.Round(ReligionValue * 100).ToString() + "%";
 
     }
 
