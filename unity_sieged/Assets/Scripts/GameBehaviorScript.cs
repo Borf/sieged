@@ -1,4 +1,7 @@
 ﻿using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
@@ -11,27 +14,42 @@ public class GameBehaviorScript : MonoBehaviour {
     public GameObject cursorObject;
     public GameObject city;
 
-    public Text GrowthSliderText;
-    public Text ConstructionSliderText;
-    public Text ReligionSliderText;
-
-    private CityBehaviorScript cityScript;
-
-    private float GrowthValue;
-    private float ConstructionValue;
-    private float ReligionValue;
-
     public GameObject GrowthSlider;
     public GameObject ConstructionSlider;
     public GameObject ReligionSlider;
 
-    MouseMode MouseMode;
+    /* public Text GrowthSliderText;
+     public Text ConstructionSliderText;
+     public Text ReligionSliderText;*/
+
+    private CityBehaviorScript cityScript;
+
+    private float GrowthValue { get { return Parameters[CityParameterType.Growth].TargetValue; } }
+    private float ConstructionValue { get { return Parameters[CityParameterType.Construction].TargetValue; } }
+    private float ReligionValue { get { return Parameters[CityParameterType.Religion].TargetValue; } }
+
+    private float ActualGrowthValue { get { return Parameters[CityParameterType.Growth].ActualValue; } }
+    private float ActualConstructionValue { get { return Parameters[CityParameterType.Construction].ActualValue; } }
+    private float ActualReligionValue { get { return Parameters[CityParameterType.Religion].ActualValue; } }
+
+    private Dictionary<CityParameterType, CityParameter> Parameters;
+
+    private MouseMode MouseMode;
 
 	// Use this for initialization
 	void Start () {
         this.MouseMode = MouseMode.Nothing;
         cityScript = city.GetComponent<CityBehaviorScript>();
+
+        // Init city parameters
+        Parameters = new Dictionary<CityParameterType, CityParameter>();
+        Parameters[CityParameterType.Construction] = new CityParameter() { slider = ConstructionSlider };
+        Parameters[CityParameterType.Growth] = new CityParameter() { slider = GrowthSlider };
+        Parameters[CityParameterType.Religion] = new CityParameter() { slider = ReligionSlider };
+
+        StartCoroutine(UpdateActualValues());
     }
+
 
     // Update is called once per frame
     void Update () {
@@ -80,54 +98,82 @@ public class GameBehaviorScript : MonoBehaviour {
         }
     }
 
+
+    private IEnumerator UpdateActualValues()
+    {
+        foreach (var parameter in Parameters.Values)
+            parameter.slider.GetComponent<SliderBehavior>().ActualValue = parameter.ActualValue;
+        while (true)
+        {
+            foreach(var parameter in Parameters.Values)
+            {
+                if (parameter.ActualValue != parameter.TargetValue)
+                {
+                    parameter.ActualValue += 0.001f * Mathf.Sign(parameter.TargetValue - parameter.ActualValue);
+                    parameter.ActualValue += (parameter.TargetValue - parameter.ActualValue) / 100.0f;
+                    parameter.slider.GetComponent<SliderBehavior>().ActualValue = parameter.ActualValue;
+                }
+            }
+
+            yield return new WaitForSeconds(0.01f);
+        }
+    }
+
+    /**
+     * user Interface methods
+     */
+
+    public void SliderChanged(float newValue, string changedParameter)
+    {
+        SliderChanged(newValue, Helper.ParseEnum<CityParameterType>(changedParameter));
+    }
+
+    public void SliderChanged(float newValue, CityParameterType changedParameter)
+    {
+        Parameters[changedParameter].TargetValue = newValue;
+        var delta = Parameters.Sum(p => p.Value.TargetValue) - 1;
+        var division = delta + 1 - newValue;
+        //first calculate all new parameters
+        foreach (var parameter in Parameters)
+        {
+            if(parameter.Key != changedParameter)
+            {
+                if (division > 0)
+                    parameter.Value.TargetValue -= delta * parameter.Value.TargetValue / division;
+                else
+                    parameter.Value.TargetValue -= delta / (Parameters.Count - 1);
+            }
+        }
+        //then send them to the UI
+        foreach(var parameter in Parameters)
+        {
+            parameter.Value.slider.GetComponent<SliderBehavior>().Value = parameter.Value.TargetValue;
+        }
+    }
+
+
     public void GrowthSliderValueChanged(float newValue)
     {
-        GrowthValue = newValue;
-        var delta = GrowthValue + ConstructionValue + ReligionValue - 1;
-        ConstructionValue -= delta * ConstructionValue / (ConstructionValue + ReligionValue);
-        ReligionValue -= delta * ReligionValue / (ConstructionValue + ReligionValue);
-        Debug.Log(GrowthValue + " - " + ConstructionValue + " - " + ReligionValue);
-        UpdateSliderTexts();
-
-        ConstructionSlider.GetComponent<Slider>().value = ConstructionValue;
-        ReligionSlider.GetComponent<Slider>().value = ReligionValue;
+        SliderChanged(newValue, CityParameterType.Growth);
     }
 
     public void ConstructionSliderValueChanged(float newValue)
     {
-        ConstructionValue = newValue;
-        var delta = GrowthValue + ConstructionValue + ReligionValue - 1;
-        GrowthValue -= delta / 2;
-        ReligionValue -= delta / 2;
-        UpdateSliderTexts();
-
-        GrowthSlider.GetComponent<Slider>().value = GrowthValue;
-        ReligionSlider.GetComponent<Slider>().value = ReligionValue;
+        SliderChanged(newValue, CityParameterType.Construction);
     }
 
     public void ReligionSliderValueChanged(float newValue)
     {
-        ReligionValue = newValue;
-        var delta = GrowthValue + ConstructionValue + ReligionValue - 1;
-        GrowthValue -= delta / 2;
-        ConstructionValue -= delta / 2;
-        UpdateSliderTexts();
-
-        GrowthSlider.GetComponent<Slider>().value = GrowthValue;
-        ConstructionSlider.GetComponent<Slider>().value = ConstructionValue;
+        SliderChanged(newValue, CityParameterType.Religion);
     }
 
-    public void UpdateSliderTexts()
+    public void SetEditMode(string mode)
     {
-        GrowthSliderText.text = Math.Round(GrowthValue * 100).ToString() + "%";
-        ConstructionSliderText.text = Math.Round(ConstructionValue * 100).ToString() + "%";
-        ReligionSliderText.text = Math.Round(ReligionValue * 100).ToString() + "%";
-
+        SetEditMode(Helper.ParseEnum<MouseMode>(mode));
     }
 
-    public void SetEditMode(string strmode)
+    public void SetEditMode(MouseMode mode)
     {
-        MouseMode mode = (MouseMode)MouseMode.Parse(typeof(MouseMode), strmode); //ewwww
         if (MouseMode == mode)
         {
             MouseMode = MouseMode.Nothing;
