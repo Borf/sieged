@@ -87,6 +87,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Assets\Scripts\BasicProjectile.cs" />
+    <Compile Include="Assets\Scripts\Lib\CityParameterHandler.cs" />
     <Compile Include="Assets\Scripts\Model\Building.cs" />
     <Compile Include="Assets\Scripts\BuildingTemplate.cs" />
     <Compile Include="Assets\Scripts\Enums\BuildingType.cs" />

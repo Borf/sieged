@@ -18,7 +18,6 @@ public class CityBehaviorScript : MonoBehaviour
     // Private consts
     private List<Point> offsets = new List<Point> { new Point(0, 1), new Point(0, -1), new Point(1, 0), new Point(-1, 0) };
     private List<Point> diagonalOffsets = new List<Point> { new Point(1, 1), new Point(-1, 1), new Point(1, -1), new Point(-1, -1) };
-    private float HouseDesignationRatio = 0.8f;
 
     // Private state variables
     private HashSet<Point> buildPositionsHouses = new HashSet<Point>();
@@ -28,7 +27,7 @@ public class CityBehaviorScript : MonoBehaviour
 
     // Public state variables
     public Grid Grid { get; set; }
-    public Dictionary<HouseDesignation, CityParameter> Parameters { get; set; }
+    public CityParameterHandler ParameterHandler { get; set; }
 
     // Use this for initialization
     void Start()
@@ -77,29 +76,22 @@ public class CityBehaviorScript : MonoBehaviour
         // Handling of different building types
         if (buildingType == BuildingType.House)
         {
-            // determine designation (UI purposes only)
-            /*HouseDesignation houseDesignation = HouseDesignation.None; 
-            if (Houses[HouseDesignation.None].Count == 0
-                || Houses[HouseDesignation.None].Count / Houses.Sum(h => h.Value.Count) < HouseDesignationRatio)
+            var houseDesignation = DetermineNextHouseDesignation();
+
+            if (houseDesignation == HouseDesignation.Construction)
             {
-                houseDesignation = HouseDesignation.None;
+                building.GetComponent<Renderer>().
             }
-            else
+            else if (houseDesignation == HouseDesignation.Religion)
             {
-                var empty = Houses.Where(h => !h.Value.Any());
-                if (empty.Any())
-                {
-                    houseDesignation = empty.First().Key;
-                }
-                else
-                {
-                    //var ratios = 
-
-
-                }
+                building.GetComponent<Renderer>().material.color = Color.blue;
+            }
+            else if (houseDesignation == HouseDesignation.Growth)
+            {
+                building.GetComponent<Renderer>().material.color = Color.green;
             }
 
-            Houses[houseDesignation].Add(building);*/
+            Houses[houseDesignation].Add(building);
             Population++;
         }
 
@@ -150,6 +142,28 @@ public class CityBehaviorScript : MonoBehaviour
         }
 
         return true;
+    }
+
+    public HouseDesignation DetermineNextHouseDesignation()
+    {
+        if (Houses[HouseDesignation.None].Count <= 10)  // first x amount of houses should always be regular houses
+        {
+            return HouseDesignation.None;
+        }
+        else
+        {
+            var empty = Houses.Where(h => !h.Value.Any()).OrderBy(h => ParameterHandler[h.Key].CityFactorTargetValue);
+            if (empty.Any())
+            {
+                return empty.First().Key;
+            }
+            else
+            {
+                return Houses.Where(h => h.Key != HouseDesignation.None)
+                            .OrderByDescending(h => ParameterHandler[h.Key].CityFactorTargetValue / h.Value.Count)
+                            .First().Key;
+            }
+        }
     }
 
     private bool CanSpawn(Point pos, GameObject template)
