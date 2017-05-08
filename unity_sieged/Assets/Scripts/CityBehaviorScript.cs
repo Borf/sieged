@@ -80,7 +80,7 @@ public class CityBehaviorScript : MonoBehaviour
 
             if (houseDesignation == HouseDesignation.Construction)
             {
-                building.GetComponent<Renderer>().
+             //   building.GetComponent<Renderer>().
             }
             else if (houseDesignation == HouseDesignation.Religion)
             {
