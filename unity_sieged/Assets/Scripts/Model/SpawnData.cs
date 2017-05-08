@@ -2,11 +2,10 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-public enum MobType
+public enum AttackType
 {
     Melee,
     Ranged,
-    Boss
 }
 
 public class Wave
@@ -32,6 +31,16 @@ public class MobSpawn
 public class Mob
 {
     public string Name;
-    public MobType Type;
+    public bool IsBoss;
     public GameObject GameObject;
+    public List<Attack> Attacks;
+}
+
+[Serializable]
+public class Attack
+{
+    public AttackType Type;
+    public float Range;
+    public bool Splash;
+    public int Damage;
 }
