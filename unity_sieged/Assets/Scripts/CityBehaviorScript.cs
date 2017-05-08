@@ -8,7 +8,8 @@ using UnityEngine;
 public class CityBehaviorScript : MonoBehaviour
 {
     // Set via Unity
-    public float Delay = 0.5f;
+    public float SpawnDelay = 0.5f;
+    public float ConvertHouseDelay = 1.0f;
     public GameObject TownhallTemplate;
     public List<GameObject> BuildingTemplates;
     public List<GameObject> WallTemplates;
@@ -57,6 +58,7 @@ public class CityBehaviorScript : MonoBehaviour
         SpawnBuilding(new Point(Grid.Width / 2, Grid.Height / 2), TownhallTemplate, BuildingType.Townhall);
 
         StartCoroutine(spawnStuff());
+        StartCoroutine(convertHouseDesignations());
     }
 
     // Update is called once per frame
@@ -144,7 +146,7 @@ public class CityBehaviorScript : MonoBehaviour
             {
                 if (buildPositionsHouses.Contains(newNeighbor))
                 {
-                    // skip
+                    // skip, nothing to update
                 }
                 else
                 {
@@ -236,6 +238,23 @@ public class CityBehaviorScript : MonoBehaviour
         SpawnBuilding(pos, WallTemplates.First(), BuildingType.Wall);
     }
 
+    public IEnumerator convertHouseDesignations()
+    {
+        while (true)
+        {
+            //var nextHouseDesignation = DetermineNextHouseDesignation();
+            //SpawnBuilding(Point pos, IEnumerable < GameObject > templates, BuildingType buildingType)
+
+            yield return new WaitForSeconds(ConvertHouseDelay);
+        }
+    }
+
+    private GameObject GetRandomHouse()
+    {
+        var houses = Buildings[BuildingType.House];
+        return houses[UnityEngine.Random.Range(0, houses.Count)];
+    }
+
     public IEnumerator spawnStuff()
     {
         while (true)
@@ -267,7 +286,7 @@ public class CityBehaviorScript : MonoBehaviour
 
             }
 
-            yield return new WaitForSeconds(Delay);
+            yield return new WaitForSeconds(SpawnDelay);
         }
     }
 
