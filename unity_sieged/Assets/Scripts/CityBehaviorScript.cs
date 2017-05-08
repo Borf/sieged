@@ -15,6 +15,15 @@ public class CityBehaviorScript : MonoBehaviour
     public List<GameObject> TowerTemplates;
     public int Population = 0;
 
+    //[System.Serializable]
+    public class customClass
+    {
+        public int customInt;
+        public string customString;
+    }
+
+    public List<customClass> bla;
+
     // Private consts
     private List<Point> offsets = new List<Point> { new Point(0, 1), new Point(0, -1), new Point(1, 0), new Point(-1, 0) };
     private List<Point> diagonalOffsets = new List<Point> { new Point(1, 1), new Point(-1, 1), new Point(1, -1), new Point(-1, -1) };
@@ -61,8 +70,26 @@ public class CityBehaviorScript : MonoBehaviour
         return offsets.Select(o => o + pos).ToList();
     }
 
-    public bool SpawnBuilding(Point pos, GameObject template, BuildingType buildingType)
+    public bool SpawnBuilding(Point pos, GameObject templates, BuildingType buildingType)
     {
+        return SpawnBuilding(pos, new List<GameObject>() { templates }, buildingType);
+    }
+
+    public bool SpawnBuilding(Point pos, IEnumerable<GameObject> templates, BuildingType buildingType)
+    {
+        // Determine what to build
+        GameObject template = null;
+        HouseDesignation houseDesignation = HouseDesignation.None;
+        if (buildingType == BuildingType.House)
+        {
+            houseDesignation = DetermineNextHouseDesignation();
+            template = templates.FirstOrDefault(t => t.name == "House." + houseDesignation.ToString());
+        }
+        else
+        {
+            template = templates.First();
+        }
+
         if (!CanSpawn(pos, template))
             return false;
 
@@ -76,21 +103,6 @@ public class CityBehaviorScript : MonoBehaviour
         // Handling of different building types
         if (buildingType == BuildingType.House)
         {
-            var houseDesignation = DetermineNextHouseDesignation();
-
-            if (houseDesignation == HouseDesignation.Construction)
-            {
-             //   building.GetComponent<Renderer>().
-            }
-            else if (houseDesignation == HouseDesignation.Religion)
-            {
-                building.GetComponent<Renderer>().material.color = Color.blue;
-            }
-            else if (houseDesignation == HouseDesignation.Growth)
-            {
-                building.GetComponent<Renderer>().material.color = Color.green;
-            }
-
             Houses[houseDesignation].Add(building);
             Population++;
         }
@@ -159,8 +171,7 @@ public class CityBehaviorScript : MonoBehaviour
             }
             else
             {
-                return Houses.Where(h => h.Key != HouseDesignation.None)
-                            .OrderByDescending(h => ParameterHandler[h.Key].CityFactorTargetValue / h.Value.Count)
+                return Houses.OrderByDescending(h => ParameterHandler[h.Key].CityFactorTargetValue / h.Value.Count)
                             .First().Key;
             }
         }
@@ -252,7 +263,7 @@ public class CityBehaviorScript : MonoBehaviour
                 if (pos == null)
                     break;
 
-                SpawnBuilding(pos, BuildingTemplates.First(), BuildingType.House);
+                SpawnBuilding(pos, BuildingTemplates, BuildingType.House);
 
             }
 

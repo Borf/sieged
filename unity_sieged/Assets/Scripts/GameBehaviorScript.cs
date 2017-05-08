@@ -110,13 +110,14 @@ public class GameBehaviorScript : MonoBehaviour {
 
         while (true)
         {
-            foreach(var parameter in ParameterHandler.Values)
+            foreach(var kvp in ParameterHandler.GetSliderParameters())
             {
-                if (parameter.ActualValue != parameter.TargetValue)
+                var p = kvp.Value;
+                if (p.ActualValue != p.TargetValue)
                 {
-                    parameter.ActualValue += 0.0005f * Mathf.Sign(parameter.TargetValue - parameter.ActualValue);
-                    parameter.ActualValue += (parameter.TargetValue - parameter.ActualValue) / 2000.0f;
-                    parameter.Slider.GetComponent<SliderBehavior>().ActualValue = parameter.ActualValue;
+                    p.ActualValue += 0.0005f * Mathf.Sign(p.TargetValue - p.ActualValue);
+                    p.ActualValue += (p.TargetValue - p.ActualValue) / 2000.0f;
+                    p.Slider.GetComponent<SliderBehavior>().ActualValue = p.ActualValue;
                 }
             }
 
@@ -136,10 +137,10 @@ public class GameBehaviorScript : MonoBehaviour {
     public void SliderChanged(float newValue, HouseDesignation changedParameter)
     {
         ParameterHandler[changedParameter].TargetValue = newValue;
-        var delta = ParameterHandler.Sum(p => p.Value.TargetValue) - 1;
-        var division = delta + 1 - newValue;
-
         var sliderParameters = ParameterHandler.GetSliderParameters();
+
+        var delta = sliderParameters.Sum(p => p.Value.TargetValue) - 1;
+        var division = delta + 1 - newValue;
 
         //first calculate all new parameters
         foreach (var parameter in sliderParameters)
