@@ -1,4 +1,6 @@
-﻿public class Point
+﻿using System;
+
+public class Point
 {
     public int X;
     public int Y;
@@ -12,6 +14,11 @@
     public static Point operator +(Point p1, Point p2)
     {
         return new Point(p1.X + p2.X, p1.Y + p2.Y);
+    }
+
+    public static Point operator -(Point p1, Point p2)
+    {
+        return new Point(p1.X - p2.X, p1.Y - p2.Y);
     }
 
     public override int GetHashCode()
@@ -30,5 +37,10 @@
             return false;
 
         return this.X == point.X && this.Y == point.Y;
+    }
+
+    public override string ToString()
+    {
+        return String.Format("({0}, {1})", this.X, this.Y);
     }
 }

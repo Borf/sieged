@@ -49,7 +49,6 @@ public class GameBehaviorScript : MonoBehaviour {
 	void Start () {
         this.MouseMode = MouseMode.Nothing;
 
-
         StartCoroutine(UpdateActualValues());
     }
 
@@ -61,40 +60,41 @@ public class GameBehaviorScript : MonoBehaviour {
 
         if (MouseMode != MouseMode.Nothing && !EventSystem.current.IsPointerOverGameObject())
         {
-            RaycastHit hit;
-            Ray ray = Camera.main.GetComponent<Camera>().ScreenPointToRay(Input.mousePosition);
-
-            if (Physics.Raycast(ray, out hit))
+            var hitPos = CameraHelper.GetHitPositionMouse();
+            if (hitPos != null)
             {
-                Transform objectHit = hit.transform;
-                Point hitPos = new Point(Mathf.FloorToInt(hit.point.x), Mathf.FloorToInt(hit.point.z));
                 cursorObject.transform.position = new Vector3(hitPos.X + 0.5f, 0.5f, hitPos.Y + 0.5f);
-                if(Input.GetMouseButton(0))
-                {
-                    if (MouseMode == MouseMode.Walls)
-                    {
-                        if (Money >= 10)
-                        {
-                            Money -= 10;
-                            cityScript.SpawnWall(hitPos);
-                        }
-                    }
-                    else if (MouseMode == MouseMode.Destroy)
-                    {
-                        cityScript.DestroyBuilding(hitPos);
-                    }
-                }
+                HandleMouseOnField(hitPos);
+            }
+        }
+    }
 
-                if (Input.GetMouseButtonDown(0))
+    private void HandleMouseOnField(Point pos)
+    {
+        if (Input.GetMouseButton(0))
+        {
+            if (MouseMode == MouseMode.Walls)
+            {
+                if (Money >= 10)
                 {
-                    if (MouseMode == MouseMode.Tower)
-                    {
-                        if (Money >= 25)
-                        {
-                            cityScript.changeToTower(hitPos);
-                            Money -= 25;
-                        }
-                    }
+                    Money -= 10;
+                    cityScript.SpawnWall(pos);
+                }
+            }
+            else if (MouseMode == MouseMode.Destroy)
+            {
+                cityScript.DestroyBuilding(pos);
+            }
+        }
+
+        if (Input.GetMouseButtonDown(0))
+        {
+            if (MouseMode == MouseMode.Tower)
+            {
+                if (Money >= 25)
+                {
+                    cityScript.changeToTower(pos);
+                    Money -= 25;
                 }
             }
         }

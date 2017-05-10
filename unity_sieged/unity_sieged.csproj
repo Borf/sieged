@@ -97,6 +97,7 @@
     <Compile Include="Assets\Scripts\Enums\MouseMode.cs" />
     <Compile Include="Assets\Scripts\GameBehaviorScript.cs" />
     <Compile Include="Assets\Scripts\HealthBar.cs" />
+    <Compile Include="Assets\Scripts\Helpers\CameraHelper.cs" />
     <Compile Include="Assets\Scripts\Lib\CityParameterHandler.cs" />
     <Compile Include="Assets\Scripts\Lib\Helper.cs" />
     <Compile Include="Assets\Scripts\Lib\Math.cs" />
