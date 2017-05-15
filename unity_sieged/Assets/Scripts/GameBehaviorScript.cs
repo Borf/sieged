@@ -28,6 +28,8 @@ public class GameBehaviorScript : MonoBehaviour {
     private float ActualConstructionValue { get { return ParameterHandler[HouseDesignation.Construction].ActualValue; } }
     private float ActualReligionValue { get { return ParameterHandler[HouseDesignation.Religion].ActualValue; } }
 
+    private TowerType SelectedTower;
+
     public CityParameterHandler ParameterHandler;
 
     private MouseMode MouseMode;
@@ -93,7 +95,7 @@ public class GameBehaviorScript : MonoBehaviour {
             {
                 if (Money >= 25)
                 {
-                    cityScript.changeToTower(pos);
+                    cityScript.changeToTower(pos, SelectedTower);
                     Money -= 25;
                 }
             }
@@ -175,19 +177,31 @@ public class GameBehaviorScript : MonoBehaviour {
         SliderChanged(newValue, HouseDesignation.Religion);
     }
 
-    public void SetEditMode(string mode)
+    public void SetEditMode(string parameter)
     {
-        SetEditMode(Helper.ParseEnum<MouseMode>(mode));
+        var mode = "";
+
+        if (parameter.Contains("_"))
+        {
+            mode = parameter.Split('_')[0];
+            SelectedTower = (TowerType)int.Parse(parameter.Split('_')[1]);
+        }
+        else
+        {
+            mode = parameter;
+        }
+
+        SetEditMode(Helper.ParseEnum<MouseMode>(mode.ToString()));
     }
 
     public void SetEditMode(MouseMode mode)
     {
-        if (MouseMode == mode)
+        /*if (MouseMode == mode)
         {
             MouseMode = MouseMode.Nothing;
             cursorObject.SetActive(false);
         }
-        else
+        else*/
         {
             MouseMode = mode;
             cursorObject.SetActive(true);

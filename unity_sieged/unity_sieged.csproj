@@ -86,7 +86,9 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Assets\Scripts\BasicProjectile.cs" />
+    <Compile Include="Assets\Scripts\Enums\TowerType.cs" />
+    <Compile Include="Assets\Scripts\Projectiles\StillProjectile.cs" />
+    <Compile Include="Assets\Scripts\Projectiles\BasicProjectile.cs" />
     <Compile Include="Assets\Scripts\BuildingTemplate.cs" />
     <Compile Include="Assets\Scripts\CameraScript.cs" />
     <Compile Include="Assets\Scripts\CityBehaviorScript.cs" />
@@ -107,8 +109,15 @@
     <Compile Include="Assets\Scripts\Model\Grid.cs" />
     <Compile Include="Assets\Scripts\Model\SpawnData.cs" />
     <Compile Include="Assets\Scripts\Model\Tile.cs" />
+    <Compile Include="Assets\Scripts\Projectiles\ParabolaProjectile.cs" />
     <Compile Include="Assets\Scripts\SliderBehavior.cs" />
-    <Compile Include="Assets\Scripts\Tower.cs" />
+    <Compile Include="Assets\Scripts\Towers\CrawlerTower.cs" />
+    <Compile Include="Assets\Scripts\Towers\GearShooterTower.cs" />
+    <Compile Include="Assets\Scripts\Towers\PhotonBeamTower.cs" />
+    <Compile Include="Assets\Scripts\Towers\SoakerTower.cs" />
+    <Compile Include="Assets\Scripts\Towers\TarbuchetTower.cs" />
+    <Compile Include="Assets\Scripts\Towers\TowerBase.cs" />
+    <Compile Include="Assets\Scripts\Towers\VirusEmitterTower.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Assets\Standard Assets\Effects\ImageEffects\Shaders\BlendModesOverlay.shader" />

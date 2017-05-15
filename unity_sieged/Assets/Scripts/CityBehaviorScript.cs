@@ -95,6 +95,10 @@ public class CityBehaviorScript : MonoBehaviour
         if (!CanSpawn(pos, template))
             return false;
 
+
+        if (buildingType == BuildingType.Tower)
+            Debug.Log("Building " + template.name);
+
         // Create building object
         var buildingTemplate = template.GetComponent<BuildingTemplate>();
         var building = Instantiate(template, new Vector3(pos.X + buildingTemplate.Width / 2.0f, 0, pos.Y + buildingTemplate.Height / 2.0f), Quaternion.identity, gameObject.transform);
@@ -219,7 +223,7 @@ public class CityBehaviorScript : MonoBehaviour
         GameObject.Destroy(building);
     }
 
-    internal void changeToTower(Point pos)
+    internal void changeToTower(Point pos, TowerType selectedTower)
     {
         if (Grid.IsOutOfBounds(pos))
             return;
@@ -228,7 +232,7 @@ public class CityBehaviorScript : MonoBehaviour
         //    return;
 
         Grid.UpdateTile(pos, BuildingType.None, null);
-        SpawnBuilding(pos, TowerTemplates.First(), BuildingType.Tower);
+        SpawnBuilding(pos, TowerTemplates[(int)selectedTower], BuildingType.Tower);
     }
 
     internal void SpawnWall(Point pos)
